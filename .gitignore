@@ -1,0 +1,46 @@
+# Unity tarafından üretilen klasörler (asla commit'leme)
+/[Ll]ibrary/
+/[Tt]emp/
+/[Oo]bj/
+/[Bb]uild/
+/[Bb]uilds/
+/[Ll]ogs/
+/[Uu]ser[Ss]ettings/
+/[Mm]emoryCaptures/
+/[Rr]ecordings/
+
+# IDE / kod editörü
+.vs/
+.idea/
+*.csproj
+!Tests/*.csproj
+*.sln
+*.suo
+*.user
+*.pidb
+*.booproj
+*.svd
+*.pdb
+*.mdb
+*.opendb
+*.VC.db
+
+# Derleme çıktıları
+*.apk
+*.aab
+*.unitypackage
+crashlytics-build.properties
+Tests/bin/
+Tests/obj/
+
+# İMZA ANAHTARLARI — ASLA GITHUB'A YÜKLEME
+*.keystore
+*.jks
+
+# İşletim sistemi
+.DS_Store
+Thumbs.db
+
+# Tek seferlik kurulum betiği
+ilk-push.bat
+_kurulum/

@@ -1,0 +1,13 @@
+{
+  "files.exclude": {
+    "**/Library": true,
+    "**/Temp": true,
+    "**/Logs": true,
+    "**/obj": true,
+    "**/*.meta": true
+  },
+  "search.exclude": {
+    "**/Library": true
+  },
+  "dotnet.defaultSolution": "disable"
+}

@@ -1,0 +1,15 @@
+# Her push'ta oyunun çekirdek kurallarını (Assets/Sorchemist/Scripts/Core) Unity olmadan derler ve test eder.
+name: Core Tests
+on:
+  push:
+  pull_request:
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: '8.0.x'
+      - name: Çekirdek testlerini çalıştır
+        run: dotnet run --project Tests/Sorchemist.CoreTests.csproj
