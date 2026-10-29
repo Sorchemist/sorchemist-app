@@ -75,7 +75,7 @@ namespace Sorchemist.UI
 
         void AddTab(RectTransform row, Tab t, string label)
         {
-            var b = UIKit.Btn(row, "Tab" + t, label, Theme.PanelLight, () => SetTab(t), 36);
+            var b = UIKit.Wood(UIKit.Btn(row, "Tab" + t, label, Theme.PanelLight, () => SetTab(t), 36));
             _tabButtons[t] = b.GetComponent<Image>();
         }
 
@@ -83,7 +83,7 @@ namespace Sorchemist.UI
         {
             _tab = t;
             foreach (var kv in _panels) kv.Value.gameObject.SetActive(kv.Key == t);
-            foreach (var kv in _tabButtons) kv.Value.color = kv.Key == t ? Theme.Accent * 0.75f + Color.black * 0.25f : Theme.PanelLight;
+            foreach (var kv in _tabButtons) kv.Value.color = UIKit.TabColor(kv.Key == t, Theme.Accent * 0.75f + Color.black * 0.25f, Theme.PanelLight);
             Refresh();
         }
 
@@ -152,7 +152,8 @@ namespace Sorchemist.UI
             var rim = potArt != null ? Art.Image(_scene, "Cauldron", potArt) : UIKit.Img(_scene, "Cauldron", UIKit.Hex("#15121F"), UIKit.Circle);
             UIKit.Place(rim.rectTransform, new Vector2(CauldronX, 0), new Vector2(0, CauldronY), new Vector2(400, 350));
             _liquid = UIKit.Img(rim.transform, "Liquid", UIKit.Hex("#3B3163"), UIKit.Circle);
-            UIKit.Place(_liquid.rectTransform, new Vector2(0.5f, 0.5f), new Vector2(0, potArt != null ? 95 : 50), new Vector2(potArt != null ? 280 : 330, potArt != null ? 70 : 150));
+            UIKit.Place(_liquid.rectTransform, new Vector2(0.5f, 0.5f), new Vector2(0, potArt != null ? 113 : 50), new Vector2(potArt != null ? 236 : 330, potArt != null ? 46 : 150));
+            if (potArt != null) _flame.gameObject.SetActive(false);   // kazan görselinin kendi ateşi var
 
             _capacity = UIKit.Txt(_scene, "Capacity", "", 32, Theme.Text);
             UIKit.Place(_capacity.rectTransform, new Vector2(CauldronX, 0), new Vector2(0, 460), new Vector2(400, 50));
@@ -172,24 +173,24 @@ namespace Sorchemist.UI
             row.anchorMin = new Vector2(0, 1); row.anchorMax = Vector2.one; row.pivot = new Vector2(0.5f, 1);
             row.sizeDelta = new Vector2(0, 110); row.anchoredPosition = Vector2.zero;
             UIKit.HList(row, 16);
-            var clear = UIKit.Btn(row, "Clear", "Boşalt", Theme.PanelLight, () => { _cauldron.Clear(); RefreshBrew(); }, 38);
+            var clear = UIKit.Wood(UIKit.Btn(row, "Clear", "Boşalt", Theme.PanelLight, () => { _cauldron.Clear(); RefreshBrew(); }, 38));
             UIKit.LE(clear, -1, -1, 1);
-            var brew = UIKit.Btn(row, "Brew", "PİŞİR!", UIKit.Hex("#E67E22"), OnBrew, 50);
+            var brew = UIKit.Wood(UIKit.Btn(row, "Brew", "PİŞİR!", UIKit.Hex("#E67E22"), OnBrew, 50), UIKit.Hex("#5A1E00"), UIKit.Hex("#FFB36B"));
             UIKit.LE(brew, -1, -1, 2);
 
             var toggles = UIKit.Rect("Toggles", right);
             toggles.anchorMin = new Vector2(0, 1); toggles.anchorMax = Vector2.one; toggles.pivot = new Vector2(0.5f, 1);
-            toggles.sizeDelta = new Vector2(0, 72); toggles.anchoredPosition = new Vector2(0, -124);
+            toggles.sizeDelta = new Vector2(0, 84); toggles.anchoredPosition = new Vector2(0, -122);
             UIKit.HList(toggles, 12);
-            _invToggle = UIKit.Btn(toggles, "Inv", "Envanterim", Theme.Magic, () => { _showTable = false; RefreshBrew(); }, 30).GetComponent<Image>();
-            _tableToggle = UIKit.Btn(toggles, "Table", "Periyodik Tablo (118)", Theme.PanelLight, () => { _showTable = true; RefreshBrew(); }, 30).GetComponent<Image>();
+            _invToggle = UIKit.Wood(UIKit.Btn(toggles, "Inv", "Envanterim", Theme.Magic, () => { _showTable = false; RefreshBrew(); }, 30)).GetComponent<Image>();
+            _tableToggle = UIKit.Wood(UIKit.Btn(toggles, "Table", "Periyodik Tablo (118)", Theme.PanelLight, () => { _showTable = true; RefreshBrew(); }, 30)).GetComponent<Image>();
 
             _elementArea = UIKit.Rect("Elements", right);
-            UIKit.Stretch(_elementArea, 0, 210, 0, 0);
+            UIKit.Stretch(_elementArea, 0, 220, 0, 0);
 
             _invScroll = UIKit.Scroll(_elementArea, "Inventory", true, false, out _invContent);
             UIKit.Stretch((RectTransform)_invScroll.transform);
-            var g = UIKit.Grid(_invContent, new Vector2(150, 170), new Vector2(14, 14), 10);
+            var g = UIKit.Grid(_invContent, new Vector2(150, 150), new Vector2(14, 14), 10);
             g.constraint = GridLayoutGroup.Constraint.FixedColumnCount; g.constraintCount = 5;
 
             _tableScroll = UIKit.Scroll(_elementArea, "Table", true, true, out _tableContent);
@@ -204,19 +205,64 @@ namespace Sorchemist.UI
             _tableContent.sizeDelta = new Vector2(18 * (cw + gap) + 20, 9 * (ch + gap) + 60);
             foreach (var e in ElementDatabase.All)
             {
-                var el = e;
                 float y = -(e.TableRow * (ch + gap)) - (e.TableRow >= 7 ? 30 : 0) - 10;
-                var b = UIKit.Btn(_tableContent, "E" + e.Number, "", CategoryColor(e.Category), () => TapElement(el), 20);
+                var b = ElementTile(_tableContent, e, 0, new Vector2(cw, ch), false);
                 var rt = (RectTransform)b.transform;
                 rt.anchorMin = rt.anchorMax = new Vector2(0, 1); rt.pivot = new Vector2(0, 1);
                 rt.anchoredPosition = new Vector2(10 + e.TableCol * (cw + gap), y);
-                rt.sizeDelta = new Vector2(cw, ch);
-                UIKit.LabelOf(b).text = "<size=18>" + e.Number + "</size>\n<b><size=36>" + e.Symbol + "</size></b>\n<size=16> </size>";
             }
             var note = UIKit.Txt(_tableContent, "Note", "Lantanitler ve aktinitler (alt iki satır) aslında 6. ve 7. periyottadır.", 24, Theme.TextDim, TextAnchor.MiddleLeft);
             var nrt = note.rectTransform;
             nrt.anchorMin = nrt.anchorMax = new Vector2(0, 1); nrt.pivot = new Vector2(0, 1);
             nrt.anchoredPosition = new Vector2(330, -(7 * (ch + gap)) + 2); nrt.sizeDelta = new Vector2(1400, 30);
+        }
+
+        // Element ikonu (Art: el_<atom no>) + adet rozeti. İkon yoksa renkli kart.
+        Button ElementTile(Transform parent, ElementData e, int avail, Vector2 size, bool big)
+        {
+            var el = e;
+            var art = Art.Get("el_" + e.Number);
+            Button b;
+            if (art != null)
+            {
+                var img = Art.Image(parent, "E" + e.Number, art);
+                b = img.gameObject.AddComponent<Button>();
+                b.onClick.AddListener(() => { AudioFXHook.Click(); TapElement(el); });
+                img.color = avail > 0 ? Color.white : new Color(0.38f, 0.36f, 0.42f, 0.85f);
+                var badge = UIKit.Panel(img.transform, "Badge", new Color(0.1f, 0.06f, 0.16f, 0.85f));
+                UIKit.Place(badge.rectTransform, new Vector2(1, 1), new Vector2(-2, -2), big ? new Vector2(60, 34) : new Vector2(42, 26), new Vector2(1, 1));
+                var t = UIKit.Txt(badge.transform, "Count", avail > 0 ? "x" + avail : "", big ? 24 : 18, Theme.Gold, TextAnchor.MiddleCenter, FontStyle.Bold);
+                UIKit.Stretch(t.rectTransform);
+                badge.gameObject.SetActive(avail > 0);
+            }
+            else
+            {
+                b = UIKit.Btn(parent, "E" + e.Number, "", CategoryColor(e.Category), () => TapElement(el), 20);
+                UIKit.LabelOf(b).text = big
+                    ? "<size=22>" + e.Number + "</size>\n<b><size=52>" + e.Symbol + "</size></b>\n<size=22>" + e.NameTr + "</size>\n<b><size=26>x" + avail + "</size></b>"
+                    : "<size=18>" + e.Number + "</size>\n<b><size=36>" + e.Symbol + "</size></b>\n<size=18>" + (avail > 0 ? "x" + avail : " ") + "</size>";
+                if (avail <= 0) b.GetComponent<Image>().color = Color.Lerp(CategoryColor(e.Category), Theme.Bg, 0.7f);
+            }
+            var rt = (RectTransform)b.transform;
+            rt.sizeDelta = size;
+            return b;
+        }
+
+        void UpdateTile(Transform cell, ElementData e, int avail)
+        {
+            var badge = cell.Find("Badge");
+            if (badge != null)
+            {
+                cell.GetComponent<Image>().color = avail > 0 ? Color.white : new Color(0.38f, 0.36f, 0.42f, 0.85f);
+                badge.gameObject.SetActive(avail > 0);
+                badge.GetComponentInChildren<Text>().text = "x" + avail;
+            }
+            else
+            {
+                cell.GetComponent<Image>().color = avail > 0 ? CategoryColor(e.Category) : Color.Lerp(CategoryColor(e.Category), Theme.Bg, 0.7f);
+                UIKit.LabelOf(cell.GetComponent<Button>()).text = "<size=18>" + e.Number + "</size>\n<b><size=36>" + e.Symbol +
+                    "</size></b>\n<size=18>" + (avail > 0 ? "x" + avail : " ") + "</size>";
+            }
         }
 
         int InCauldron(string sym) { int n; return _cauldron.TryGetValue(sym, out n) ? n : 0; }
@@ -249,22 +295,29 @@ namespace Sorchemist.UI
             if (mystery) sources.Add("Gizemli Kristal (şansına bağlı)");
             string where = sources.Count > 0 ? "Nerede bulunur: " + string.Join(", ", sources.ToArray()) : "Bu element henüz köyde bulunmuyor. Belki ileride...";
 
-            if (!State.HasSkill(SkillDatabase.Periodic))
-            {
-                G.Toast(e.NameTr + " (" + e.Symbol + ") elinde yok.\n" + where);
-                return;
-            }
+            bool sci = State.HasSkill(SkillDatabase.Periodic);
             RectTransform body;
-            var m = UIKit.Modal(G.Overlay, e.Number + ". " + e.NameTr + " (" + e.Symbol + ")", out body, 800, 1100);
-            UIKit.VList(body, 16, 10);
+            var m = UIKit.Modal(G.Overlay, AlchemyNames.Name(e.Number), out body, 820, 1300);
+            var icon = Art.Get("el_" + e.Number);
+            if (icon != null)
+            {
+                var ic = Art.Image(body, "Icon", icon);
+                UIKit.Place(ic.rectTransform, new Vector2(0, 1), new Vector2(170, -190), new Vector2(330, 330));
+            }
+            int have = State.ElementCount(e.Symbol);
             var t = UIKit.Txt(body, "Info",
-                "Kategori: " + ElementDatabase.CategoryNameTr(e.Category) +
-                "\nAtom kütlesi: " + e.Mass.ToString("0.###") + " u" +
-                "\nPeriyot: " + e.Period + (e.Group > 0 ? "   Grup: " + e.Group : "   (f-blok)") +
+                "<b>" + e.Number + ". " + e.NameTr + " (" + e.Symbol + ")</b>   <color=#A99FC9>" + ElementDatabase.CategoryNameTr(e.Category) + "</color>" +
+                "\n<i>" + AlchemyNames.Lore(e.Number) + "</i>" +
+                (sci
+                    ? "\n\nAtom kütlesi: " + e.Mass.ToString("0.###") + " u   •   Periyot: " + e.Period + (e.Group > 0 ? "   •   Grup: " + e.Group : "   (f-blok)")
+                    : "\n\n<color=#A99FC9>Bilimsel bilgi kartı için 'Mendeleyev'in Defteri' yeteneğini aç.</color>") +
                 (e.Radioactive ? "\n<color=#9CFF8A>Radyoaktif!</color>" : "") +
-                "\n\n" + where, 36, Theme.Text, TextAnchor.UpperLeft);
-            UIKit.LE(t, 480);
-            UIKit.LE(UIKit.Btn(body, "Close", "Kapat", Theme.Magic, () => Destroy(m.gameObject)), 120);
+                "\n\n" + where +
+                "\n\nElindeki: <b>" + have + "</b>", 32, Theme.Text, TextAnchor.UpperLeft);
+            t.rectTransform.anchorMin = Vector2.zero; t.rectTransform.anchorMax = Vector2.one;
+            t.rectTransform.offsetMin = new Vector2(icon != null ? 370 : 10, 120); t.rectTransform.offsetMax = new Vector2(-10, -10);
+            var close = UIKit.Wood(UIKit.Btn(body, "Close", "Kapat", Theme.Magic, () => Destroy(m.gameObject), 34));
+            UIKit.Place((RectTransform)close.transform, new Vector2(0.5f, 0), new Vector2(0, 50), new Vector2(360, 96));
         }
 
         Color MixColor()
@@ -305,11 +358,13 @@ namespace Sorchemist.UI
                 UIKit.LE(chip, 64, 150);
             }
             _capacity.text = CauldronTotal + " / " + State.CauldronCapacity + " atom";
-            _liquid.color = MixColor();
+            var mix = MixColor();
+            if (Art.Has("cauldron")) mix.a = _cauldron.Count == 0 ? 0f : 0.8f;   // boşken görseldeki sıvı görünsün
+            _liquid.color = mix;
             _flame.color = State.HasSkill(SkillDatabase.PurpleFlame) ? Theme.Magic : UIKit.Hex("#FF9F1C");
 
-            _invToggle.color = _showTable ? Theme.PanelLight : Theme.Magic;
-            _tableToggle.color = _showTable ? Theme.Magic : Theme.PanelLight;
+            _invToggle.color = UIKit.TabColor(!_showTable, Theme.Magic, Theme.PanelLight);
+            _tableToggle.color = UIKit.TabColor(_showTable, Theme.Magic, Theme.PanelLight);
             _invScroll.gameObject.SetActive(!_showTable);
             _tableScroll.gameObject.SetActive(_showTable);
 
@@ -332,11 +387,8 @@ namespace Sorchemist.UI
             }
             foreach (var e in owned)
             {
-                var el = e;
                 int avail = State.ElementCount(e.Symbol) - InCauldron(e.Symbol);
-                var b = UIKit.Btn(_invContent, "E" + e.Symbol, "", CategoryColor(e.Category), () => TapElement(el), 20);
-                UIKit.LabelOf(b).text = "<size=22>" + e.Number + "</size>\n<b><size=52>" + e.Symbol + "</size></b>\n<size=22>" + e.NameTr + "</size>\n<b><size=26>x" + avail + "</size></b>";
-                if (avail <= 0) b.GetComponent<Image>().color = Color.Lerp(CategoryColor(e.Category), Color.gray, 0.7f);
+                ElementTile(_invContent, e, avail, new Vector2(150, 150), true);
             }
         }
 
@@ -346,11 +398,7 @@ namespace Sorchemist.UI
             {
                 var cell = _tableContent.Find("E" + e.Number);
                 if (cell == null) continue;
-                int avail = State.ElementCount(e.Symbol) - InCauldron(e.Symbol);
-                var img = cell.GetComponent<Image>();
-                img.color = avail > 0 ? CategoryColor(e.Category) : Color.Lerp(CategoryColor(e.Category), Theme.Bg, 0.7f);
-                UIKit.LabelOf(cell.GetComponent<Button>()).text = "<size=18>" + e.Number + "</size>\n<b><size=36>" + e.Symbol +
-                    "</size></b>\n<size=18>" + (avail > 0 ? "x" + avail : " ") + "</size>";
+                UpdateTile(cell, e, State.ElementCount(e.Symbol) - InCauldron(e.Symbol));
             }
         }
 
@@ -393,6 +441,7 @@ namespace Sorchemist.UI
                 AudioFX.Play(Sfx.Chime);
                 FX.I.Bubbles(_scene, c, center, 30, 300);
                 FX.I.Burst(_scene, c, center + Vector2.up * 100, 30, 700);
+                FX.I.SpriteBurst(_scene, "fx_success", center + Vector2.up * 120, 520);
                 if (State.HasSkill(SkillDatabase.CrystalRain)) FX.I.CrystalRain(ov, Theme.Magic, 35);
                 return;
             }
@@ -407,6 +456,7 @@ namespace Sorchemist.UI
                     FX.I.Shake(G.SafeRoot, 40, 0.7f);
                     FX.I.Burst(_scene, UIKit.Hex("#FF7B00"), center, 60, 1200);
                     FX.I.Smoke(_scene, UIKit.Hex("#555555"), center, 18);
+                    FX.I.SpriteBurst(_scene, "fx_fail", center + Vector2.up * 120, 560);
                     if (v == FailVisual.RoofBlown) FX.I.FloatText(_scene, "ÇATI UÇTU!", Theme.Danger, new Vector2(0, 150));
                     break;
                 case FailVisual.HairOnFire:
@@ -460,14 +510,14 @@ namespace Sorchemist.UI
                 ResultPopup.Show(c.NameTr + " (" + c.Formula + ")", UIKit.Hex(c.ColorHex),
                     "Etki: <b>" + CompoundDatabase.EffectNameTr(c.Effect) + "</b>\n\n" + c.FlavorTr, null,
                     (rep.NewDiscovery ? "YENİ KEŞİF!  •  " : "") + "+" + r.Xp + " XP",
-                    "Aqualf laboratuvarda " + c.NameTr + " (" + c.Formula + ") keşfetti!", () => Done(rep));
+                    "Aqualf laboratuvarda " + c.NameTr + " (" + c.Formula + ") keşfetti!", () => Done(rep), "fx_success");
             }
             else if (r.Fail != null)
             {
                 string body = r.Fail.DescriptionTr + (string.IsNullOrEmpty(r.HintTr) ? "" : "\n\n<color=#FFD166>İpucu: " + r.HintTr + "</color>");
                 ResultPopup.Show(r.Fail.TitleTr, ResultPopup.RarityColor(r.Fail.Rarity), body, r.Fail.ScienceTr,
                     (rep.NewFail ? "YENİ FAIL-DEX GİRDİSİ!  •  " : "") + ResultPopup.RarityName(r.Fail.Rarity) + "  •  +" + r.Xp + " XP",
-                    "Aqualf'in laboratuvarında '" + r.Fail.TitleTr + "' anı!", () => Done(rep));
+                    "Aqualf'in laboratuvarında '" + r.Fail.TitleTr + "' anı!", () => Done(rep), "fx_fail");
             }
             else
             {

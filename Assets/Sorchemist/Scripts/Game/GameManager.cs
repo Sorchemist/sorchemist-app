@@ -58,7 +58,10 @@ namespace Sorchemist.Game
 
             BuildCanvas();
             Show(ScreenId.Village);
-            if (_isNewGame) Invoke("Intro", 0.3f);
+            // Açılış ekranı (Art: bg_title). Yoksa doğrudan oyuna gir.
+            bool newGame = _isNewGame;
+            if (!TitleScreen.Show(Overlay, () => { if (newGame) Intro(); }))
+                if (_isNewGame) Invoke("Intro", 0.3f);
         }
 
         void EnsureCamera()

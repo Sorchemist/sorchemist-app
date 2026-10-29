@@ -37,21 +37,50 @@ namespace Sorchemist.UI
 
         void Build(RectTransform root, string name, string role, string colorHex, string portraitKey)
         {
-            var box = UIKit.Panel(root, "Box", Theme.Panel);
-            UIKit.Place(box.rectTransform, new Vector2(0.5f, 0), new Vector2(110, 30), new Vector2(1450, 420), new Vector2(0.5f, 0));
-            var outline = box.gameObject.AddComponent<Outline>();
-            outline.effectColor = Theme.Magic; outline.effectDistance = new Vector2(4, -4);
+            var frameArt = Art.Get("frame_dialog");
+            Image box;
+            RectTransform portraitArea, nameArea, textArea, choiceArea;
+            int textSize = 40;
+            if (frameArt != null)
+            {
+                // Parşömen çerçeve (Dialogs.jpg). Koordinatlar çerçeve görselinin piksellerine göre.
+                var fs = new Vector2(frameArt.rect.width, frameArt.rect.height);
+                box = Art.Image(root, "Box", frameArt);
+                box.preserveAspect = false;
+                float w = 1040, h = w * fs.y / fs.x;
+                UIKit.Place(box.rectTransform, new Vector2(0.5f, 0), new Vector2(110, 10), new Vector2(w, h), new Vector2(0.5f, 0));
+                portraitArea = UIKit.InFrame(UIKit.Rect("PortraitArea", box.transform), fs, 158, 145, 372, 359);
+                nameArea = UIKit.InFrame(UIKit.Rect("NameArea", box.transform), fs, 440, 38, 795, 112);
+                textArea = UIKit.InFrame(UIKit.Rect("TextArea", box.transform), fs, 440, 185, 1010, 600);
+                choiceArea = UIKit.InFrame(UIKit.Rect("ChoiceArea", box.transform), fs, 85, 380, 390, 640);
+                textSize = 34;
+            }
+            else
+            {
+                box = UIKit.Panel(root, "Box", Theme.Panel);
+                UIKit.Place(box.rectTransform, new Vector2(0.5f, 0), new Vector2(110, 30), new Vector2(1450, 420), new Vector2(0.5f, 0));
+                var outline = box.gameObject.AddComponent<Outline>();
+                outline.effectColor = Theme.Magic; outline.effectDistance = new Vector2(4, -4);
+                portraitArea = UIKit.Rect("PortraitArea", box.transform);
+                UIKit.Place(portraitArea, new Vector2(0, 1), new Vector2(130, 30), new Vector2(230, 230));
+                nameArea = UIKit.Rect("NameArea", box.transform);
+                UIKit.Place(nameArea, new Vector2(0, 1), new Vector2(270, -50), new Vector2(1100, 80), new Vector2(0, 0.5f));
+                textArea = UIKit.Rect("TextArea", box.transform);
+                UIKit.Stretch(textArea, 270, 95, 50, 150);
+                choiceArea = UIKit.Rect("ChoiceArea", box.transform);
+                choiceArea.anchorMin = new Vector2(0, 0); choiceArea.anchorMax = new Vector2(1, 0);
+                choiceArea.offsetMin = new Vector2(270, 25); choiceArea.offsetMax = new Vector2(-30, 135);
+            }
 
-            // Portre (yer tutucu: renkli daire + baş harf)
+            // Portre: daire maskeli (Art: portrait_<kimlik>), yoksa baş harf
             var art = Art.Get(portraitKey);
-            var portrait = UIKit.Img(box.transform, "Portrait", UIKit.Hex(colorHex), UIKit.Circle);
-            UIKit.Place(portrait.rectTransform, new Vector2(0, 1), new Vector2(130, 30), new Vector2(230, 230));
+            var portrait = UIKit.Img(portraitArea, "Portrait", UIKit.Hex(colorHex), UIKit.Circle);
+            UIKit.Stretch(portrait.rectTransform);
             if (art != null)
             {
-                // Daire maskeli portre (Art: portrait_<kimlik>)
                 portrait.gameObject.AddComponent<Mask>().showMaskGraphic = true;
                 var face = Art.Image(portrait.transform, "Face", art);
-                UIKit.Stretch(face.rectTransform, 6, 6, 6, 6);
+                UIKit.Stretch(face.rectTransform, 4, 4, 4, 4);
                 face.preserveAspect = false;
             }
             else
@@ -60,18 +89,26 @@ namespace Sorchemist.UI
                 UIKit.Stretch(ini.rectTransform);
             }
 
-            var nameT = UIKit.Txt(box.transform, "Name", "<b>" + name + "</b>  <color=#A99FC9><size=30>" + role + "</size></color>",
-                44, Theme.Accent, TextAnchor.MiddleLeft);
-            UIKit.Place(nameT.rectTransform, new Vector2(0, 1), new Vector2(270, -50), new Vector2(1100, 80), new Vector2(0, 0.5f));
+            bool parchment = frameArt != null;
+            var nameT = parchment
+                ? UIKit.Txt(nameArea, "Name", "<b>" + name + "</b>", 34, UIKit.WoodText, TextAnchor.MiddleCenter)
+                : UIKit.Txt(nameArea, "Name", "<b>" + name + "</b>  <color=#A99FC9><size=30>" + role + "</size></color>", 44, Theme.Accent, TextAnchor.MiddleLeft);
+            UIKit.Stretch(nameT.rectTransform);
 
-            _text = UIKit.Txt(box.transform, "Text", "", 40, Theme.Text, TextAnchor.UpperLeft);
-            UIKit.Stretch(_text.rectTransform, 270, 95, 50, 150);
+            if (parchment)
+            {
+                var roleT = UIKit.Txt(textArea, "Role", role, 26, UIKit.Hex("#7A5A3A"), TextAnchor.UpperLeft, FontStyle.Italic);
+                roleT.rectTransform.anchorMin = new Vector2(0, 1); roleT.rectTransform.anchorMax = Vector2.one;
+                roleT.rectTransform.pivot = new Vector2(0.5f, 1); roleT.rectTransform.sizeDelta = new Vector2(0, 36);
+                roleT.rectTransform.anchoredPosition = Vector2.zero;
+            }
+            _text = UIKit.Txt(textArea, "Text", "", textSize, parchment ? UIKit.WoodText : Theme.Text, TextAnchor.UpperLeft);
+            UIKit.Stretch(_text.rectTransform, 0, parchment ? 44 : 0, 0, 0);
 
-            _choices = UIKit.Rect("Choices", box.transform);
-            _choices.anchorMin = new Vector2(0, 0); _choices.anchorMax = new Vector2(1, 0);
-            _choices.pivot = new Vector2(0.5f, 0);
-            _choices.offsetMin = new Vector2(270, 25); _choices.offsetMax = new Vector2(-30, 135);
-            UIKit.HList(_choices, 16);
+            _choices = choiceArea;
+            if (parchment) { var v = UIKit.VList(_choices, 10, 0); v.childForceExpandHeight = false; }
+            else UIKit.HList(_choices, 16);
+            _choiceHeight = parchment ? 72 : -1;
 
             // Kutunun herhangi bir yerine dokunmak ilerletir
             var advance = box.gameObject.AddComponent<Button>();
@@ -79,6 +116,19 @@ namespace Sorchemist.UI
             advance.onClick.AddListener(Next);
 
             ShowLine();
+        }
+
+        float _choiceHeight = -1;
+
+        Button ChoiceBtn(string label, Color color, Action act)
+        {
+            var b = UIKit.Btn(_choices, "C", label, color, act, 30);
+            if (_choiceHeight > 0)
+            {
+                UIKit.Wood(b, null, Color.Lerp(Color.white, color, 0.25f));
+                UIKit.LE(b, _choiceHeight);
+            }
+            return b;
         }
 
         void ShowLine()
@@ -89,18 +139,18 @@ namespace Sorchemist.UI
             bool last = _index >= _lines.Length - 1;
             if (!last)
             {
-                UIKit.Btn(_choices, "Next", "Devam  >", Theme.PanelLight, Next, 36);
+                ChoiceBtn("Devam  >", Theme.PanelLight, Next);
             }
             else if (_choiceData == null || _choiceData.Length == 0)
             {
-                UIKit.Btn(_choices, "Close", "Tamam", Theme.Magic, Close, 36);
+                ChoiceBtn("Tamam", Theme.Magic, Close);
             }
             else
             {
                 foreach (var c in _choiceData)
                 {
                     var choice = c;
-                    UIKit.Btn(_choices, "C", choice.Label, choice.Color, () => { Close(); if (choice.Act != null) choice.Act(); }, 32);
+                    ChoiceBtn(choice.Label, choice.Color, () => { Close(); if (choice.Act != null) choice.Act(); });
                 }
             }
         }

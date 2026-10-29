@@ -45,6 +45,21 @@ namespace Sorchemist.UI
 
         public static bool Has(string key) { return Get(key) != null; }
 
+        static readonly Dictionary<string, Sprite> SlicedCache = new Dictionary<string, Sprite>();
+
+        /// <summary>9 dilimli (kenarları bozulmadan uzayan) sürüm. border: sol, alt, sağ, üst (piksel).</summary>
+        public static Sprite Sliced(string key, Vector4 border)
+        {
+            Sprite s;
+            if (SlicedCache.TryGetValue(key, out s)) return s;
+            var src = Get(key);
+            if (src != null)
+                s = Sprite.Create(src.texture, src.textureRect, new Vector2(0.5f, 0.5f), src.pixelsPerUnit, 0,
+                    SpriteMeshType.FullRect, border);
+            SlicedCache[key] = s;
+            return s;
+        }
+
         /// <summary>Sprite'lı, en-boy oranını koruyan bir Image oluşturur.</summary>
         public static Image Image(Transform parent, string name, Sprite sprite, Color? tint = null)
         {

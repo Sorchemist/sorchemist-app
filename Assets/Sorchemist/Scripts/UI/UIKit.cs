@@ -215,6 +215,47 @@ namespace Sorchemist.UI
 
         public static Text LabelOf(Button b) { return b.GetComponentInChildren<Text>(); }
 
+        public static readonly Color WoodText = Hex("#3B2410");
+        public static readonly Color WoodInactive = new Color(0.66f, 0.62f, 0.58f, 1f);
+        public static bool HasWood { get { return Art.Has("btn_wood"); } }
+
+        /// <summary>Butonu tahta tabela görünümüne çevirir (Art: btn_wood). tint: tahtayı hafifçe renklendirir.</summary>
+        public static Button Wood(Button b, Color? textColor = null, Color? tint = null)
+        {
+            var sp = Art.Sliced("btn_wood", new Vector4(80, 50, 80, 50));
+            if (sp == null) return b;
+            var img = b.GetComponent<Image>();
+            img.sprite = sp;
+            img.type = Image.Type.Sliced;
+            img.pixelsPerUnitMultiplier = 1.7f;
+            img.color = tint ?? Color.white;
+            var t = LabelOf(b);
+            if (t != null)
+            {
+                t.color = textColor ?? WoodText;
+                t.fontStyle = FontStyle.Bold;
+                t.rectTransform.offsetMin = new Vector2(22, 8); t.rectTransform.offsetMax = new Vector2(-22, -8);
+                t.resizeTextForBestFit = true; t.resizeTextMinSize = 16; t.resizeTextMaxSize = t.fontSize;
+            }
+            return b;
+        }
+
+        /// <summary>Çerçeve görselinin içindeki bir piksel dikdörtgenine yerleştirir (frameSize: görselin piksel boyutu).</summary>
+        public static RectTransform InFrame(RectTransform child, Vector2 frameSize, float x0, float y0, float x1, float y1)
+        {
+            child.anchorMin = new Vector2(x0 / frameSize.x, 1 - y1 / frameSize.y);
+            child.anchorMax = new Vector2(x1 / frameSize.x, 1 - y0 / frameSize.y);
+            child.offsetMin = child.offsetMax = Vector2.zero;
+            return child;
+        }
+
+        /// <summary>Sekme rengi: tahta varsa beyaz/gri, yoksa verilen renkler.</summary>
+        public static Color TabColor(bool active, Color activeColor, Color inactiveColor)
+        {
+            if (HasWood) return active ? Color.white : WoodInactive;
+            return active ? activeColor : inactiveColor;
+        }
+
         public static LayoutElement LE(Component c, float prefHeight = -1, float prefWidth = -1, float flexW = -1)
         {
             var le = c.gameObject.GetComponent<LayoutElement>();

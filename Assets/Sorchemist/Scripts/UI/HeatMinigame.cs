@@ -56,6 +56,15 @@ namespace Sorchemist.UI
                 l.rectTransform.anchorMin = new Vector2(1, 0); l.rectTransform.anchorMax = new Vector2(1, 1);
                 l.rectTransform.pivot = new Vector2(0, 0.5f);
                 l.rectTransform.anchoredPosition = new Vector2(20, 0); l.rectTransform.sizeDelta = new Vector2(300, 0);
+                var hi = Art.Get("heat_" + i);   // Crafting.jpg alev ikonları (1 küçük, 2 orta, 3 büyük)
+                if (hi != null)
+                {
+                    var ic = Art.Image(z.transform, "Icon", hi);
+                    ic.rectTransform.anchorMin = ic.rectTransform.anchorMax = new Vector2(1, 0.5f);
+                    ic.rectTransform.pivot = new Vector2(0, 0.5f);
+                    ic.rectTransform.anchoredPosition = new Vector2(14, 0); ic.rectTransform.sizeDelta = new Vector2(62, 62);
+                    l.rectTransform.anchoredPosition = new Vector2(86, 0);
+                }
             }
             var needle = UIKit.Img(_gauge, "Needle", Color.white);
             _needle = needle.rectTransform;
@@ -84,6 +93,7 @@ namespace Sorchemist.UI
             _lockFill.rectTransform.offsetMin = _lockFill.rectTransform.offsetMax = Vector2.zero;
 
             var b = UIKit.Btn(body, "Bellows", "KÖRÜK\n<size=30>(basılı tut)</size>", UIKit.Hex("#C0392B"), null, 52);
+            UIKit.Wood(b, UIKit.Hex("#5A1E00"), UIKit.Hex("#FF9A7A"));
             UIKit.Place((RectTransform)b.transform, new Vector2(0.5f, 0.5f), new Vector2(390, -140), new Vector2(440, 300));
             _bellows = b.gameObject.AddComponent<HoldButton>();
         }

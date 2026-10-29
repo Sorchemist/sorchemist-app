@@ -58,6 +58,7 @@ namespace Sorchemist.UI
             UIKit.Place(_status.rectTransform, new Vector2(0.5f, 0.5f), new Vector2(0, -150), new Vector2(1000, 60));
 
             var b = UIKit.Btn(body, "Heat", "ISIT (basılı tut)", UIKit.Hex("#C0392B"), null, 42);
+            UIKit.Wood(b, UIKit.Hex("#5A1E00"), UIKit.Hex("#FF9A7A"));
             UIKit.Place((RectTransform)b.transform, new Vector2(0.5f, 0), new Vector2(0, 95), new Vector2(700, 170));
             _hold = b.gameObject.AddComponent<HoldButton>();
         }

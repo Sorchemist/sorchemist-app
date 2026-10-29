@@ -9,7 +9,8 @@ namespace Sorchemist.UI
 {
     public class HudBar : MonoBehaviour
     {
-        Text _gold, _level, _day;
+        Text _gold, _level, _day, _points;
+        bool _dayNumberOnly;
         Image _xpFill;
         readonly Dictionary<ScreenId, Image> _tabs = new Dictionary<ScreenId, Image>();
 
@@ -34,38 +35,73 @@ namespace Sorchemist.UI
             AddTab(col, ScreenId.Skills, "Yetenek");
 
             // ----- Üst çubuk -----
-            var bar = UIKit.Img(root, "TopBar", Theme.Panel);
+            var bar = UIKit.Img(root, "TopBar", new Color(0.08f, 0.06f, 0.14f, 0.92f));
             var brt = bar.rectTransform;
             brt.anchorMin = new Vector2(0, 1); brt.anchorMax = new Vector2(1, 1);
             brt.pivot = new Vector2(0.5f, 1); brt.offsetMin = new Vector2(rail, -top); brt.offsetMax = Vector2.zero;
 
-            _level = UIKit.Txt(bar.transform, "Level", "", 38, Theme.Accent, TextAnchor.MiddleLeft, FontStyle.Bold);
-            UIKit.Place(_level.rectTransform, new Vector2(0, 0.5f), new Vector2(30, 16), new Vector2(360, 56), new Vector2(0, 0.5f));
-            var xpBg = UIKit.Img(bar.transform, "XpBg", Theme.PanelLight);
-            UIKit.Place(xpBg.rectTransform, new Vector2(0, 0.5f), new Vector2(30, -28), new Vector2(340, 20), new Vector2(0, 0.5f));
-            _xpFill = UIKit.Img(xpBg.transform, "XpFill", Theme.Accent);
+            var lvlArt = Art.Get("hud_level");
+            var goldArt = Art.Get("hud_gold");
+            var dayArt = Art.Get("hud_day");
+            if (lvlArt != null && goldArt != null && dayArt != null)
+            {
+                // Taş/tahta çerçeveler (UI.jpg)
+                float fh = top - 6;
+                var lv = Art.Image(bar.transform, "LevelFrame", lvlArt);
+                var lvSize = new Vector2(lvlArt.rect.width, lvlArt.rect.height);
+                UIKit.Place(lv.rectTransform, new Vector2(0, 0.5f), new Vector2(16, 0), new Vector2(fh * lvSize.x / lvSize.y, fh), new Vector2(0, 0.5f));
+                _level = UIKit.Txt(lv.transform, "Level", "", 30, Theme.Accent, TextAnchor.MiddleCenter, FontStyle.Bold);
+                UIKit.InFrame(_level.rectTransform, lvSize, 45, 35, 300, 145);
+                _points = UIKit.Txt(lv.transform, "Points", "", 24, Theme.Gold, TextAnchor.MiddleLeft, FontStyle.Bold);
+                UIKit.InFrame(_points.rectTransform, lvSize, 365, 35, 800, 112);
+                var xpBg = UIKit.Img(lv.transform, "XpBg", UIKit.Hex("#1E1430"));
+                UIKit.InFrame(xpBg.rectTransform, lvSize, 356, 114, 806, 146);
+                _xpFill = UIKit.Img(xpBg.transform, "XpFill", Theme.Accent);
+
+                var gd = Art.Image(bar.transform, "GoldFrame", goldArt);
+                var gdSize = new Vector2(goldArt.rect.width, goldArt.rect.height);
+                UIKit.Place(gd.rectTransform, new Vector2(0.5f, 0.5f), Vector2.zero, new Vector2(fh * gdSize.x / gdSize.y, fh));
+                _gold = UIKit.Txt(gd.transform, "Gold", "", 36, Theme.Gold, TextAnchor.MiddleCenter, FontStyle.Bold);
+                UIKit.InFrame(_gold.rectTransform, gdSize, 170, 45, 530, 150);
+
+                var dy = Art.Image(bar.transform, "DayFrame", dayArt);
+                var dySize = new Vector2(dayArt.rect.width, dayArt.rect.height);
+                UIKit.Place(dy.rectTransform, new Vector2(1, 0.5f), new Vector2(-170, 0), new Vector2(fh * dySize.x / dySize.y, fh), new Vector2(1, 0.5f));
+                _day = UIKit.Txt(dy.transform, "Day", "", 34, Theme.Text, TextAnchor.MiddleCenter, FontStyle.Bold);
+                UIKit.InFrame(_day.rectTransform, dySize, 285, 40, 435, 135);
+                _dayNumberOnly = true;
+            }
+            else
+            {
+                _level = UIKit.Txt(bar.transform, "Level", "", 38, Theme.Accent, TextAnchor.MiddleLeft, FontStyle.Bold);
+                UIKit.Place(_level.rectTransform, new Vector2(0, 0.5f), new Vector2(30, 16), new Vector2(360, 56), new Vector2(0, 0.5f));
+                var xpBg = UIKit.Img(bar.transform, "XpBg", Theme.PanelLight);
+                UIKit.Place(xpBg.rectTransform, new Vector2(0, 0.5f), new Vector2(30, -28), new Vector2(340, 20), new Vector2(0, 0.5f));
+                _xpFill = UIKit.Img(xpBg.transform, "XpFill", Theme.Accent);
+                _gold = UIKit.Txt(bar.transform, "Gold", "", 42, Theme.Gold, TextAnchor.MiddleCenter, FontStyle.Bold);
+                UIKit.Place(_gold.rectTransform, new Vector2(0.5f, 0.5f), Vector2.zero, new Vector2(360, 80));
+                _day = UIKit.Txt(bar.transform, "Day", "", 34, Theme.TextDim, TextAnchor.MiddleRight);
+                UIKit.Place(_day.rectTransform, new Vector2(1, 0.5f), new Vector2(-170, 0), new Vector2(220, 60), new Vector2(1, 0.5f));
+            }
             _xpFill.rectTransform.anchorMin = Vector2.zero; _xpFill.rectTransform.anchorMax = new Vector2(0, 1);
             _xpFill.rectTransform.offsetMin = _xpFill.rectTransform.offsetMax = Vector2.zero;
 
-            _gold = UIKit.Txt(bar.transform, "Gold", "", 42, Theme.Gold, TextAnchor.MiddleCenter, FontStyle.Bold);
-            UIKit.Place(_gold.rectTransform, new Vector2(0.5f, 0.5f), Vector2.zero, new Vector2(360, 80));
-            _day = UIKit.Txt(bar.transform, "Day", "", 34, Theme.TextDim, TextAnchor.MiddleRight);
-            UIKit.Place(_day.rectTransform, new Vector2(1, 0.5f), new Vector2(-170, 0), new Vector2(220, 60), new Vector2(1, 0.5f));
-
             var gear = UIKit.Btn(bar.transform, "Settings", "Ayar", Theme.PanelLight, OpenSettings, 30);
-            UIKit.Place((RectTransform)gear.transform, new Vector2(1, 0.5f), new Vector2(-24, 0), new Vector2(120, 80), new Vector2(1, 0.5f));
+            UIKit.Wood(gear);
+            UIKit.Place((RectTransform)gear.transform, new Vector2(1, 0.5f), new Vector2(-16, 0), new Vector2(140, 80), new Vector2(1, 0.5f));
             Refresh();
         }
 
         void AddTab(RectTransform row, ScreenId id, string label)
         {
-            var b = UIKit.Btn(row, "Tab_" + id, label, Theme.PanelLight, () => GameManager.I.Show(id), 30);
+            var b = UIKit.Btn(row, "Tab_" + id, label, Theme.PanelLight, () => GameManager.I.Show(id), 23);
+            UIKit.Wood(b);
             _tabs[id] = b.GetComponent<Image>();
         }
 
         public void SetActiveTab(ScreenId id)
         {
-            foreach (var kv in _tabs) kv.Value.color = kv.Key == id ? Theme.Magic : Theme.PanelLight;
+            foreach (var kv in _tabs) kv.Value.color = UIKit.TabColor(kv.Key == id, Theme.Magic, Theme.PanelLight);
         }
 
         public void Refresh()
@@ -73,13 +109,19 @@ namespace Sorchemist.UI
             var gm = GameManager.I;
             if (gm == null || gm.Session == null || _gold == null) return;
             var s = gm.State;
-            _gold.text = s.Gold + " altın";
-            _level.text = "Seviye " + s.Level + (s.SkillPoints > 0 ? "  <color=#FFD166>(+" + s.SkillPoints + ")</color>" : "");
-            _day.text = "Gün " + s.Day;
+            _gold.text = _dayNumberOnly ? s.Gold.ToString() : s.Gold + " altın";
+            if (_points != null)
+            {
+                _level.text = "Sv. " + s.Level;
+                _points.text = s.SkillPoints > 0 ? "+" + s.SkillPoints + " yetenek puanı" : s.Xp + " / " + PlayerState.XpToNext(s.Level) + " XP";
+            }
+            else
+                _level.text = "Seviye " + s.Level + (s.SkillPoints > 0 ? "  <color=#FFD166>(+" + s.SkillPoints + ")</color>" : "");
+            _day.text = _dayNumberOnly ? s.Day.ToString() : "Gün " + s.Day;
             _xpFill.rectTransform.anchorMax = new Vector2(Mathf.Clamp01((float)s.Xp / PlayerState.XpToNext(s.Level)), 1);
         }
 
-        void OpenSettings()
+        public static void OpenSettings()
         {
             var gm = GameManager.I;
             RectTransform body;

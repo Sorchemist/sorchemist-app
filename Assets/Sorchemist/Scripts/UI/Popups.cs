@@ -54,8 +54,75 @@ namespace Sorchemist.UI
             }
         }
 
-        /// <summary>Başarılı iksir veya Fail-Dex girdisi için paylaşılabilir sonuç kartı.</summary>
+        /// <summary>Başarılı iksir veya Fail-Dex girdisi için paylaşılabilir sonuç kartı.
+        /// iconKey: çerçevedeki yuvarlak pencerede gösterilecek görsel (fx_success, fx_fail, el_8...).</summary>
         public static void Show(string title, Color titleColor, string body, string science, string badge,
+            string shareText, Action onClose, string iconKey = null)
+        {
+            var gm = GameManager.I;
+            var frameArt = Art.Get("frame_dialog");
+            if (frameArt == null) { ShowPlain(title, titleColor, body, science, badge, shareText, onClose); return; }
+
+            var dim = UIKit.Img(gm.Overlay, "Result", Theme.Dim);
+            UIKit.Stretch(dim.rectTransform);
+            var fs = new Vector2(frameArt.rect.width, frameArt.rect.height);
+            var card = Art.Image(dim.transform, "Card", frameArt);
+            card.preserveAspect = false;
+            float w = 1300, h = w * fs.y / fs.x;
+            UIKit.Place(card.rectTransform, new Vector2(0.5f, 0.5f), new Vector2(110, 0), new Vector2(w, h));
+            FX.I.Pop(card.transform, 0.08f);
+
+            // Yuvarlak pencerede görsel
+            var hole = UIKit.InFrame(UIKit.Rect("Hole", card.transform), fs, 158, 145, 372, 359);
+            var icon = Art.Get(iconKey);
+            if (icon != null && iconKey.StartsWith("fx_"))
+            {
+                var ic = Art.Image(hole, "Icon", icon);
+                UIKit.Stretch(ic.rectTransform, -30, -30, -30, -30);
+                ic.gameObject.AddComponent<Spinner>();
+            }
+            else if (icon != null)
+            {
+                // Portre: daire maskeli
+                var m = UIKit.Img(hole, "Mask", UIKit.Hex("#C98A4A"), UIKit.Circle);
+                UIKit.Stretch(m.rectTransform, 8, 8, 8, 8);
+                m.gameObject.AddComponent<Mask>().showMaskGraphic = true;
+                var ic = Art.Image(m.transform, "Icon", icon);
+                UIKit.Stretch(ic.rectTransform);
+                ic.preserveAspect = false;
+            }
+
+            var ttl = UIKit.Txt(UIKit.InFrame(UIKit.Rect("TitleArea", card.transform), fs, 440, 38, 795, 112), "Title", title, 34,
+                UIKit.WoodText, TextAnchor.MiddleCenter, FontStyle.Bold);
+            UIKit.Stretch(ttl.rectTransform);
+            ttl.resizeTextForBestFit = true; ttl.resizeTextMinSize = 20; ttl.resizeTextMaxSize = 34;
+            ttl.horizontalOverflow = HorizontalWrapMode.Wrap; ttl.verticalOverflow = VerticalWrapMode.Truncate;
+
+            var content = UIKit.InFrame(UIKit.Rect("TextArea", card.transform), fs, 440, 150, 1010, 612);
+            var v = UIKit.VList(content, 12, 0); v.childForceExpandHeight = false;
+            if (!string.IsNullOrEmpty(badge))
+                UIKit.LE(UIKit.Txt(content, "Badge", badge, 30, Color.Lerp(titleColor, Color.black, 0.35f), TextAnchor.MiddleLeft, FontStyle.Bold), 44);
+            UIKit.LE(UIKit.Txt(content, "Body", body, 30, UIKit.WoodText, TextAnchor.UpperLeft), 190);
+            if (!string.IsNullOrEmpty(science))
+            {
+                var sp = UIKit.Panel(content, "Science", new Color(0.35f, 0.22f, 0.1f, 0.18f));
+                UIKit.LE(sp, 160);
+                var st = UIKit.Txt(sp.transform, "T", "<b>Bilim köşesi:</b> " + science, 26, UIKit.Hex("#2E5E4E"), TextAnchor.MiddleLeft);
+                UIKit.Stretch(st.rectTransform, 18, 10, 18, 10);
+            }
+            UIKit.LE(UIKit.Txt(content, "Brand", "SORCHEMIST  •  @sorchemist", 22, UIKit.Hex("#8B6B4A"), TextAnchor.MiddleLeft, FontStyle.Bold), 30);
+
+            var buttons = UIKit.InFrame(UIKit.Rect("Buttons", card.transform), fs, 95, 400, 380, 620);
+            var bv = UIKit.VList(buttons, 14, 0); bv.childForceExpandHeight = false;
+            UIKit.LE(UIKit.Wood(UIKit.Btn(buttons, "Share", "Paylaş", Color.white, () => gm.Share(shareText), 34), null, UIKit.Hex("#FFC2D6")), 90);
+            UIKit.LE(UIKit.Wood(UIKit.Btn(buttons, "Ok", "Tamam", Color.white, () =>
+            {
+                UnityEngine.Object.Destroy(dim.gameObject);
+                if (onClose != null) onClose();
+            }, 34)), 90);
+        }
+
+        static void ShowPlain(string title, Color titleColor, string body, string science, string badge,
             string shareText, Action onClose)
         {
             var gm = GameManager.I;
@@ -63,15 +130,9 @@ namespace Sorchemist.UI
             var modal = UIKit.Modal(gm.Overlay, title, out content, 920, 1400);
             modal.Find("Card/Title").GetComponent<Text>().color = titleColor;
             FX.I.Pop(modal.Find("Card"), 0.08f);
-
             UIKit.VList(content, 20, 10);
-            if (!string.IsNullOrEmpty(badge))
-            {
-                var b = UIKit.Txt(content, "Badge", badge, 40, Theme.Gold, TextAnchor.MiddleCenter, FontStyle.Bold);
-                UIKit.LE(b, 60);
-            }
-            var bt = UIKit.Txt(content, "Body", body, 38, Theme.Text);
-            UIKit.LE(bt, 200);
+            if (!string.IsNullOrEmpty(badge)) UIKit.LE(UIKit.Txt(content, "Badge", badge, 40, Theme.Gold, TextAnchor.MiddleCenter, FontStyle.Bold), 60);
+            UIKit.LE(UIKit.Txt(content, "Body", body, 38, Theme.Text), 200);
             if (!string.IsNullOrEmpty(science))
             {
                 var sp = UIKit.Panel(content, "Science", Theme.PanelLight);
@@ -79,9 +140,6 @@ namespace Sorchemist.UI
                 var st = UIKit.Txt(sp.transform, "T", "<b>Bilim köşesi:</b>\n" + science, 32, Theme.Accent);
                 UIKit.Stretch(st.rectTransform, 24, 16, 24, 16);
             }
-            var brand = UIKit.Txt(content, "Brand", "SORCHEMIST  •  @sorchemist", 28, Theme.TextDim, TextAnchor.MiddleCenter, FontStyle.Bold);
-            UIKit.LE(brand, 40);
-
             var row = UIKit.Rect("Row", content);
             UIKit.LE(row, 120);
             UIKit.HList(row, 20);

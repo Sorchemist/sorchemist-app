@@ -181,6 +181,32 @@ namespace Sorchemist.UI
             if (t != null) Destroy(t.gameObject);
         }
 
+        /// <summary>Bir efekt görselini (fx_success / fx_fail) büyüterek ve döndürerek gösterir.</summary>
+        public void SpriteBurst(RectTransform area, string key, Vector2 origin, float size, float dur = 1.1f)
+        {
+            var sp = Art.Get(key);
+            if (sp == null) return;
+            var img = Art.Image(area, "fxSprite", sp);
+            img.raycastTarget = false;
+            UIKit.Place(img.rectTransform, new Vector2(0.5f, 0.5f), origin, Vector2.one * size);
+            StartCoroutine(DoSpriteBurst(img, dur));
+        }
+
+        IEnumerator DoSpriteBurst(Image img, float dur)
+        {
+            float t = 0;
+            while (t < dur && img != null)
+            {
+                t += Time.deltaTime;
+                float k = t / dur;
+                img.rectTransform.localScale = Vector3.one * Mathf.Lerp(0.3f, 1.25f, Mathf.Sqrt(k));
+                img.rectTransform.localRotation = Quaternion.Euler(0, 0, -40 * k);
+                img.color = new Color(1, 1, 1, k < 0.6f ? 1 : 1 - (k - 0.6f) / 0.4f);
+                yield return null;
+            }
+            if (img != null) Destroy(img.gameObject);
+        }
+
         /// <summary>Basit "zıplama" animasyonu (buton/ikon geri bildirimi).</summary>
         public void Pop(Transform tr, float amount = 0.2f)
         {

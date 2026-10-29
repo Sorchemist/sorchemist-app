@@ -66,7 +66,7 @@ namespace Sorchemist.UI
             _status = UIKit.Txt(body, "Status", "", 36, Theme.Text);
             UIKit.Place(_status.rectTransform, new Vector2(0.5f, 0.5f), new Vector2(330, -30), new Vector2(520, 60));
 
-            var skip = UIKit.Btn(body, "Skip", "Karıştırmadan geç", Theme.PanelLight, () => Finish(0f), 32);
+            var skip = UIKit.Wood(UIKit.Btn(body, "Skip", "Karıştırmadan geç", Theme.PanelLight, () => Finish(0f), 32));
             UIKit.Place((RectTransform)skip.transform, new Vector2(0.5f, 0.5f), new Vector2(330, -200), new Vector2(460, 90));
         }
 

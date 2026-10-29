@@ -11,8 +11,10 @@ namespace Sorchemist.UI
 {
     public class VillageScreen : GameScreen
     {
-        const int GridSize = 10;
-        const float TileW = 200, TileH = 100;
+        // 7x7 izometrik blok harita. Her karo: üst yüzü 560x308 piksel olan bir toprak bloğu.
+        const int GridSize = 7;
+        const float TileW = 560, TileH = 308;
+        const int RiverX = 6;   // sağ kenar: nehir
 
         RectTransform _map, _objects, _questBanner;
         Text _questText;
@@ -26,24 +28,48 @@ namespace Sorchemist.UI
         // Ham madde noktalarının harita konumları (gx, gy)
         static readonly Dictionary<string, Vector2Int> NodePos = new Dictionary<string, Vector2Int>
         {
-            { "seawater", new Vector2Int(9, 5) }, { "air", new Vector2Int(0, 0) },
-            { "limestone", new Vector2Int(8, 1) }, { "ash", new Vector2Int(5, 1) },
-            { "hematite", new Vector2Int(0, 4) }, { "sulfur", new Vector2Int(9, 0) },
-            { "malachite", new Vector2Int(0, 8) }, { "sand", new Vector2Int(8, 8) },
-            { "magnesite", new Vector2Int(6, 0) }, { "guano", new Vector2Int(2, 9) },
-            { "dewcap", new Vector2Int(5, 8) }, { "crystal", new Vector2Int(9, 9) },
+            { "air", new Vector2Int(3, 0) }, { "hematite", new Vector2Int(0, 1) },
+            { "magnesite", new Vector2Int(5, 1) }, { "dewcap", new Vector2Int(3, 2) },
+            { "limestone", new Vector2Int(0, 3) }, { "ash", new Vector2Int(3, 4) },
+            { "guano", new Vector2Int(3, 5) }, { "malachite", new Vector2Int(5, 5) },
+            { "sulfur", new Vector2Int(1, 6) }, { "crystal", new Vector2Int(3, 6) },
+            { "seawater", new Vector2Int(6, 3) }, { "sand", new Vector2Int(6, 5) },
+        };
+        // Dekor (Tiles.jpg parçaları)
+        static readonly Dictionary<Vector2Int, string> Decor = new Dictionary<Vector2Int, string>
+        {
+            { new Vector2Int(0, 0), "decor_forest" }, { new Vector2Int(5, 0), "decor_forest2" },
+            { new Vector2Int(0, 5), "decor_mushrooms" }, { new Vector2Int(0, 6), "decor_arch" },
+            { new Vector2Int(2, 6), "decor_logs" }, { new Vector2Int(4, 6), "decor_fence" },
+            { new Vector2Int(5, 6), "decor_bushes" }, { new Vector2Int(6, 1), "decor_waterfall" },
         };
         static readonly Vector2Int LabPos = new Vector2Int(3, 3);
+        const float Margin = 260;
 
         static Vector2 IsoToLocal(int gx, int gy)
         {
-            // Haritanın tepesi (0,0) üstte ortada
-            return new Vector2((gx - gy) * TileW * 0.5f, -(gx + gy) * TileH * 0.5f - 160);
+            // Haritanın tepesi (0,0) üstte ortada; dönen değer karonun üst yüz merkezi
+            return new Vector2((gx - gy) * TileW * 0.5f, -(gx + gy) * TileH * 0.5f - Margin);
+        }
+
+        static string GroundKey(int gx, int gy)
+        {
+            if (gx == RiverX) return "tile_water";
+            if (gx == LabPos.x && gy == LabPos.y) return "tile_cross";
+            if (gx == LabPos.x || gy == LabPos.y) return "tile_path";
+            return ((gx * 7 + gy * 3) % 5 == 0) ? "tile_grass_b" : "tile_grass";
+        }
+
+        static Color GroundColor(int gx, int gy)
+        {
+            if (gx == RiverX) return UIKit.Hex("#3E8ED0");
+            if (gx == LabPos.x || gy == LabPos.y) return Theme.Path;
+            return (gx + gy) % 2 == 0 ? Theme.Grass : Theme.GrassDark;
         }
 
         public override void Build()
         {
-            var bg = UIKit.Img(Root, "Sky", UIKit.Hex("#2D5A3D"));
+            var bg = UIKit.Img(Root, "Sky", UIKit.Hex("#1E3A2C"));
             UIKit.Stretch(bg.rectTransform);
             var skyArt = Art.Get("bg_village");
             if (skyArt != null)
@@ -58,12 +84,10 @@ namespace Sorchemist.UI
             RectTransform content;
             var sr = UIKit.Scroll(Root, "MapScroll", true, true, out content);
             UIKit.Stretch((RectTransform)sr.transform);
-            // İçerik boyutu sabit; ContentSizeFitter'ı kapat
             Destroy(content.GetComponent<ContentSizeFitter>());
             content.anchorMin = content.anchorMax = new Vector2(0.5f, 1);
             content.pivot = new Vector2(0.5f, 1);
-            content.sizeDelta = new Vector2(GridSize * TileW + 200, GridSize * TileH + 500);
-            content.anchoredPosition = Vector2.zero;
+            content.sizeDelta = new Vector2(GridSize * TileW + 500, GridSize * TileH + Margin + 500);
             _map = content;
 
             var tiles = UIKit.Rect("Tiles", _map);
@@ -71,86 +95,131 @@ namespace Sorchemist.UI
             _objects = UIKit.Rect("Objects", _map);
             UIKit.Place(_objects, new Vector2(0.5f, 1), Vector2.zero, Vector2.zero);
 
-            // Zemin karoları
+            // Zemin blokları: arkadan öne (gx+gy küçükten büyüğe) çizilir
+            var cells = new List<Vector2Int>();
             for (int gy = 0; gy < GridSize; gy++)
-                for (int gx = 0; gx < GridSize; gx++)
+                for (int gx = 0; gx < GridSize; gx++) cells.Add(new Vector2Int(gx, gy));
+            cells.Sort((p, q) => (p.x + p.y).CompareTo(q.x + q.y));
+            foreach (var c in cells)
+            {
+                var art = Art.First(GroundKey(c.x, c.y), "tile_grass");
+                Image t;
+                if (art != null)
                 {
-                    Color c = (gx + gy) % 2 == 0 ? Theme.Grass : Theme.GrassDark;
-                    string key = (gx + gy) % 2 == 0 ? "tile_grass" : "tile_grass_b";
-                    if (gx == GridSize - 1) { c = UIKit.Hex("#3E8ED0"); key = "tile_water"; }          // deniz kıyısı
-                    else if (gx == LabPos.x || gy == LabPos.y) { c = Theme.Path; key = "tile_path"; }  // patika
-                    var tileArt = Art.First(key, key == "tile_grass_b" ? "tile_grass" : key);
-                    var t = UIKit.Img(tiles, "T", tileArt != null ? Color.white : c, tileArt ?? UIKit.Diamond);
-                    t.raycastTarget = false;
-                    UIKit.Place(t.rectTransform, new Vector2(0.5f, 0.5f), IsoToLocal(gx, gy), new Vector2(TileW + 2, TileH + 2));
+                    // Görselin ortası = üst yüzün merkezi (asset hazırlanırken böyle hizalandı)
+                    t = Art.Image(tiles, "T", art);
+                    float h = (TileW + 6) * art.rect.height / art.rect.width;
+                    UIKit.Place(t.rectTransform, new Vector2(0.5f, 0.5f), IsoToLocal(c.x, c.y), new Vector2(TileW + 6, h));
                 }
+                else
+                {
+                    t = UIKit.Img(tiles, "T", GroundColor(c.x, c.y), UIKit.Diamond);
+                    UIKit.Place(t.rectTransform, new Vector2(0.5f, 0.5f), IsoToLocal(c.x, c.y), new Vector2(TileW + 2, TileH + 2));
+                }
+                t.raycastTarget = false;
+            }
 
             // Nesneleri derinliğe göre sırala (arkadakiler önce çizilir)
             var items = new List<KeyValuePair<int, Action>>();
             foreach (var v in VillageDatabase.Villagers)
             {
                 var villager = v;
-                items.Add(new KeyValuePair<int, Action>(v.GridX + 1 + v.GridY + 1, () => BuildHouse(villager)));
+                items.Add(new KeyValuePair<int, Action>(v.GridX + v.GridY, () => BuildHouse(villager)));
             }
             foreach (var kv in NodePos)
             {
                 var id = kv.Key; var p = kv.Value;
                 items.Add(new KeyValuePair<int, Action>(p.x + p.y, () => BuildNode(id, p)));
             }
+            foreach (var kv in Decor)
+            {
+                var key = kv.Value; var p = kv.Key;
+                items.Add(new KeyValuePair<int, Action>(p.x + p.y, () => BuildDecor(key, p)));
+            }
             items.Add(new KeyValuePair<int, Action>(LabPos.x + LabPos.y, BuildLab));
             items.Sort((a, b) => a.Key.CompareTo(b.Key));
             foreach (var it in items) it.Value();
 
+            // Uzaklaştırılmış görünüm: köyün büyük kısmı ekrana sığsın
+            const float zoom = 0.6f;
+            content.localScale = Vector3.one * zoom;
+            // Haritayı laboratuvara ortala
+            content.anchoredPosition = new Vector2(0, ((LabPos.x + LabPos.y) * TileH * 0.5f + Margin) * zoom - 420);
+
             // Görev afişi (ekranın üstünde sabit)
-            var banner = UIKit.Btn(Root, "QuestBanner", "", UIKit.Hex("#8E44AD"), OpenQuest, 36);
+            var banner = UIKit.Btn(Root, "QuestBanner", "", UIKit.Hex("#8E44AD"), OpenQuest, 34);
+            UIKit.Wood(banner);
             _questBanner = (RectTransform)banner.transform;
-            UIKit.Place(_questBanner, new Vector2(0.5f, 1), new Vector2(0, -80), new Vector2(1000, 130));
+            UIKit.Place(_questBanner, new Vector2(0.5f, 1), new Vector2(0, -70), new Vector2(1000, 110));
             _questText = UIKit.LabelOf(banner);
 
-            var hint = UIKit.Txt(Root, "Hint", "Haritayı kaydır • Kaynaklara dokunarak topla", 28, new Color(1, 1, 1, 0.6f));
-            UIKit.Place(hint.rectTransform, new Vector2(0.5f, 0), new Vector2(0, 30), new Vector2(1000, 50));
+            var hint = UIKit.Txt(Root, "Hint", "Haritayı kaydır • Kaynaklara dokunarak topla • Evlere dokunup sohbet et", 26, new Color(1, 1, 1, 0.75f));
+            hint.gameObject.AddComponent<Outline>().effectColor = new Color(0, 0, 0, 0.7f);
+            UIKit.Place(hint.rectTransform, new Vector2(0.5f, 0), new Vector2(0, 26), new Vector2(1400, 44));
         }
 
-        RectTransform ObjectRoot(string name, Vector2 pos, Vector2 size)
+        // Nesne kökü: alt orta noktası karonun üst yüz merkezinin biraz önünde
+        RectTransform ObjectRoot(string name, int gx, int gy, Vector2 size)
         {
             var rt = UIKit.Rect(name, _objects);
-            UIKit.Place(rt, new Vector2(0.5f, 0.5f), pos, size, new Vector2(0.5f, 0.15f));
+            UIKit.Place(rt, new Vector2(0.5f, 0.5f), IsoToLocal(gx, gy) + new Vector2(0, -TileH * 0.28f), size, new Vector2(0.5f, 0));
             return rt;
         }
 
         void BuildHouse(VillagerData v)
         {
-            var rt = ObjectRoot("House_" + v.Id, IsoToLocal(v.GridX + 1, v.GridY + 1), new Vector2(170, 200));
+            var rt = ObjectRoot("House_" + v.Id, v.GridX, v.GridY, new Vector2(340, 330));
             var houseArt = Art.First("house_" + v.Id, "house_default");
             Image wall, roof;
             if (houseArt != null)
             {
-                // Gerçek ev çizimi (Art: house_<kimlik> ya da house_default)
                 wall = Art.Image(rt, "Wall", houseArt);
-                UIKit.Place(wall.rectTransform, new Vector2(0.5f, 0), new Vector2(0, 40), new Vector2(230, 230), new Vector2(0.5f, 0));
+                UIKit.Place(wall.rectTransform, new Vector2(0.5f, 0), new Vector2(0, 0), new Vector2(340, 300), new Vector2(0.5f, 0));
                 roof = wall;
                 _artHouses.Add(v.Id);
             }
             else
             {
                 wall = UIKit.Panel(rt, "Wall", UIKit.Hex(v.ColorHex));
-                UIKit.Place(wall.rectTransform, new Vector2(0.5f, 0), new Vector2(0, 60), new Vector2(130, 100), new Vector2(0.5f, 0));
+                UIKit.Place(wall.rectTransform, new Vector2(0.5f, 0), new Vector2(0, 30), new Vector2(170, 130), new Vector2(0.5f, 0));
                 roof = UIKit.Img(rt, "Roof", UIKit.Hex("#7B3F00"), UIKit.Triangle);
-                UIKit.Place(roof.rectTransform, new Vector2(0.5f, 0), new Vector2(0, 150), new Vector2(170, 90), new Vector2(0.5f, 0));
+                UIKit.Place(roof.rectTransform, new Vector2(0.5f, 0), new Vector2(0, 150), new Vector2(220, 110), new Vector2(0.5f, 0));
                 var door = UIKit.Img(rt, "Door", UIKit.Hex("#4A2C12"), UIKit.Circle);
-                UIKit.Place(door.rectTransform, new Vector2(0.5f, 0), new Vector2(0, 60), new Vector2(46, 70), new Vector2(0.5f, 0));
+                UIKit.Place(door.rectTransform, new Vector2(0.5f, 0), new Vector2(0, 30), new Vector2(56, 84), new Vector2(0.5f, 0));
+            }
+
+            // Evin önünde duran köylü (Art: villager_<kimlik>)
+            var figArt = Art.Get("villager_" + v.Id);
+            if (figArt != null)
+            {
+                var fig = Art.Image(rt, "Villager", figArt);
+                UIKit.Place(fig.rectTransform, new Vector2(0, 0), new Vector2(10, -24), new Vector2(120, 140), new Vector2(0.5f, 0));
+                fig.raycastTarget = false;
             }
 
             var label = UIKit.Txt(rt, "Name", v.NameTr, 26, Color.white, TextAnchor.MiddleCenter, FontStyle.Bold);
-            UIKit.Place(label.rectTransform, new Vector2(0.5f, 0), new Vector2(0, 25), new Vector2(260, 40));
-            label.gameObject.AddComponent<Outline>().effectColor = new Color(0, 0, 0, 0.7f);
+            UIKit.Place(label.rectTransform, new Vector2(0.5f, 0), new Vector2(0, -30), new Vector2(300, 36));
+            label.gameObject.AddComponent<Outline>().effectColor = new Color(0, 0, 0, 0.8f);
 
             var state = UIKit.Rect("State", rt);           // Yaşayan harita süslemeleri buraya
             UIKit.Stretch(state);
 
-            var bang = UIKit.Txt(rt, "Bang", "!", 90, Theme.Gold, TextAnchor.MiddleCenter, FontStyle.Bold);
-            UIKit.Place(bang.rectTransform, new Vector2(0.5f, 1), new Vector2(0, 60), new Vector2(80, 110));
-            bang.gameObject.AddComponent<Outline>().effectColor = Color.black;
+            var bangArt = Art.Get("icon_bang");
+            Graphic bang;
+            if (bangArt != null)
+            {
+                var bi = Art.Image(rt, "Bang", bangArt);
+                UIKit.Place(bi.rectTransform, new Vector2(0.5f, 1), new Vector2(0, 50), new Vector2(90, 90));
+                bi.raycastTarget = false;
+                bang = bi;
+            }
+            else
+            {
+                var bt = UIKit.Txt(rt, "Bang", "!", 90, Theme.Gold, TextAnchor.MiddleCenter, FontStyle.Bold);
+                UIKit.Place(bt.rectTransform, new Vector2(0.5f, 1), new Vector2(0, 60), new Vector2(80, 110));
+                bt.gameObject.AddComponent<Outline>().effectColor = Color.black;
+                bang = bt;
+            }
             bang.gameObject.AddComponent<Bouncer>();
 
             var btn = wall.gameObject.AddComponent<Button>();
@@ -162,54 +231,67 @@ namespace Sorchemist.UI
         void BuildNode(string rawId, Vector2Int p)
         {
             var raw = RawMaterialDatabase.Get(rawId);
-            var rt = ObjectRoot("Node_" + rawId, IsoToLocal(p.x, p.y), new Vector2(160, 160));
+            var rt = ObjectRoot("Node_" + rawId, p.x, p.y, new Vector2(200, 220));
             var nodeArt = Art.Get("node_" + rawId);
             Image img;
             if (nodeArt != null)
             {
                 img = Art.Image(rt, "Icon", nodeArt);
-                UIKit.Place(img.rectTransform, new Vector2(0.5f, 0), new Vector2(0, 35), new Vector2(140, 140), new Vector2(0.5f, 0));
+                UIKit.Place(img.rectTransform, new Vector2(0.5f, 0), new Vector2(0, 30), new Vector2(170, 150), new Vector2(0.5f, 0));
                 _artNodes.Add(rawId);
+                img.gameObject.AddComponent<Bouncer>().Amplitude = 6;
             }
             else
             {
                 img = UIKit.Img(rt, "Icon", UIKit.Hex(raw.ColorHex), rawId == "crystal" ? UIKit.Diamond : UIKit.Circle);
-                UIKit.Place(img.rectTransform, new Vector2(0.5f, 0), new Vector2(0, 40), rawId == "crystal" ? new Vector2(80, 120) : new Vector2(100, 80), new Vector2(0.5f, 0));
+                UIKit.Place(img.rectTransform, new Vector2(0.5f, 0), new Vector2(0, 40), rawId == "crystal" ? new Vector2(80, 120) : new Vector2(110, 90), new Vector2(0.5f, 0));
                 if (rawId == "crystal") img.rectTransform.localRotation = Quaternion.Euler(0, 0, 90);
             }
             img.gameObject.AddComponent<Button>().onClick.AddListener(() => TapNode(rawId, rt));
-            var label = UIKit.Txt(rt, "Name", raw.NameTr, 24, Color.white, TextAnchor.MiddleCenter);
-            UIKit.Place(label.rectTransform, new Vector2(0.5f, 0), new Vector2(0, 15), new Vector2(240, 36));
-            label.gameObject.AddComponent<Outline>().effectColor = new Color(0, 0, 0, 0.7f);
+            var label = UIKit.Txt(rt, "Name", raw.NameTr, 26, Color.white, TextAnchor.MiddleCenter, FontStyle.Bold);
+            UIKit.Place(label.rectTransform, new Vector2(0.5f, 0), new Vector2(0, 8), new Vector2(300, 36));
+            label.gameObject.AddComponent<Outline>().effectColor = new Color(0, 0, 0, 0.8f);
             var timer = UIKit.Txt(rt, "Timer", "", 26, Theme.Gold, TextAnchor.MiddleCenter, FontStyle.Bold);
-            UIKit.Place(timer.rectTransform, new Vector2(0.5f, 0), new Vector2(0, 140), new Vector2(160, 40));
+            UIKit.Place(timer.rectTransform, new Vector2(0.5f, 0), new Vector2(0, 200), new Vector2(180, 40));
             timer.gameObject.AddComponent<Outline>().effectColor = Color.black;
             _nodeTimers[rawId] = timer;
             _nodeImages[rawId] = img;
         }
 
+        void BuildDecor(string key, Vector2Int p)
+        {
+            var art = Art.Get(key);
+            if (art == null) return;
+            // Küçük dekorlar (kütük, çit, kemer) daha küçük çizilir
+            float s = key == "decor_logs" ? 200 : key == "decor_fence" ? 260 : key == "decor_arch" ? 300 : key == "decor_signpost" ? 150 : 460;
+            var rt = ObjectRoot("Decor_" + key, p.x, p.y, new Vector2(s, s));
+            var img = Art.Image(rt, "Art", art);
+            UIKit.Place(img.rectTransform, new Vector2(0.5f, 0), new Vector2(0, s > 300 ? -30 : 0), new Vector2(s, s * 0.92f), new Vector2(0.5f, 0));
+            img.raycastTarget = false;
+        }
+
         void BuildLab()
         {
-            var rt = ObjectRoot("Lab", IsoToLocal(LabPos.x, LabPos.y), new Vector2(200, 320));
-            var towerArt = Art.Get("lab_tower");
+            var rt = ObjectRoot("Lab", LabPos.x, LabPos.y, new Vector2(320, 440));
+            var towerArt = Art.First("lab_tower", "cauldron");
             Image tower;
             if (towerArt != null)
             {
                 tower = Art.Image(rt, "Tower", towerArt);
-                UIKit.Place(tower.rectTransform, new Vector2(0.5f, 0), new Vector2(0, 40), new Vector2(280, 360), new Vector2(0.5f, 0));
+                UIKit.Place(tower.rectTransform, new Vector2(0.5f, 0), new Vector2(0, 0), new Vector2(320, 420), new Vector2(0.5f, 0));
             }
             else
             {
                 tower = UIKit.Panel(rt, "Tower", UIKit.Hex("#5B2C83"));
-                UIKit.Place(tower.rectTransform, new Vector2(0.5f, 0), new Vector2(0, 60), new Vector2(130, 200), new Vector2(0.5f, 0));
+                UIKit.Place(tower.rectTransform, new Vector2(0.5f, 0), new Vector2(0, 40), new Vector2(170, 260), new Vector2(0.5f, 0));
                 var roof = UIKit.Img(rt, "Roof", UIKit.Hex("#7CF2C8"), UIKit.Triangle);
-                UIKit.Place(roof.rectTransform, new Vector2(0.5f, 0), new Vector2(0, 250), new Vector2(170, 150), new Vector2(0.5f, 0));
+                UIKit.Place(roof.rectTransform, new Vector2(0.5f, 0), new Vector2(0, 295), new Vector2(230, 190), new Vector2(0.5f, 0));
                 var win = UIKit.Img(rt, "Window", Theme.Gold, UIKit.Circle);
-                UIKit.Place(win.rectTransform, new Vector2(0.5f, 0), new Vector2(0, 180), new Vector2(50, 50), new Vector2(0.5f, 0));
+                UIKit.Place(win.rectTransform, new Vector2(0.5f, 0), new Vector2(0, 200), new Vector2(64, 64), new Vector2(0.5f, 0));
                 win.gameObject.AddComponent<Bouncer>().Glow = true;
             }
-            var label = UIKit.Txt(rt, "Name", "Aqualf'in Kulesi", 28, Theme.Accent, TextAnchor.MiddleCenter, FontStyle.Bold);
-            UIKit.Place(label.rectTransform, new Vector2(0.5f, 0), new Vector2(0, 25), new Vector2(300, 40));
+            var label = UIKit.Txt(rt, "Name", "Aqualf'in Kulesi", 30, Theme.Accent, TextAnchor.MiddleCenter, FontStyle.Bold);
+            UIKit.Place(label.rectTransform, new Vector2(0.5f, 0), new Vector2(0, -10), new Vector2(340, 40));
             label.gameObject.AddComponent<Outline>().effectColor = Color.black;
             tower.gameObject.AddComponent<Button>().onClick.AddListener(() => G.Show(ScreenId.Lab));
         }
@@ -250,7 +332,11 @@ namespace Sorchemist.UI
                 case HouseState.Glowing: line = "Evim gece gündüz parlıyor. Gözlük lazım."; break;
                 case HouseState.Pink: line = "Pembe yakıştı mı sence? Tavuklarım bayıldı."; break;
                 case HouseState.Fireworks: line = "Ambarım... ama gösteri muhteşemdi!"; break;
-                default: line = "Merhaba simyacı! Bugün sana bir işim yok."; break;
+                default:
+                    line = v.AmbientTr != null && v.AmbientTr.Length > 0
+                        ? v.AmbientTr[UnityEngine.Random.Range(0, v.AmbientTr.Length)]
+                        : "Merhaba simyacı! Bugün sana bir işim yok.";
+                    break;
             }
             DialoguePanel.Show(G.Overlay, v.NameTr, v.RoleTr, v.ColorHex, "portrait_" + v.Id, new[] { line }, null);
         }
@@ -284,7 +370,7 @@ namespace Sorchemist.UI
                 FX.I.FloatText(_objects, "+" + o.Gold + " altın", Theme.Gold, at + Vector2.up * 120);
                 string rewards = o.RawRewards.Length > 0 ? "\n\nÖdül: " + string.Join(", ", Array.ConvertAll(o.RawRewards, r => RawMaterialDatabase.Get(r).NameTr)) : "";
                 ResultPopup.Show("Görev Tamam!", Theme.Accent, o.MessageTr + rewards, null, "+" + o.Gold + " altın  •  +" + o.Xp + " XP",
-                    "Aqualf'in iksiri " + v.NameTr + "'nin derdine deva oldu!", () => { G.HandleLevelUps(rep.LevelUps); Refresh(); });
+                    "Aqualf'in iksiri " + v.NameTr + "'nin derdine deva oldu!", () => { G.HandleLevelUps(rep.LevelUps); Refresh(); }, "portrait_" + v.Id);
             }
             else if (o.Fail != null)
             {
@@ -294,13 +380,13 @@ namespace Sorchemist.UI
                 FX.I.Smoke(_objects, Color.white, at, 16);
                 ResultPopup.Show(o.Fail.TitleTr, ResultPopup.RarityColor(o.Fail.Rarity), o.Fail.DescriptionTr, o.Fail.ScienceTr,
                     rep.NewFail ? "YENİ FAIL-DEX GİRDİSİ! (" + ResultPopup.RarityName(o.Fail.Rarity) + ")" : null,
-                    "Fındıkdere'de " + o.Fail.TitleTr + " vakası! Aqualf yine yaptı...", () => { G.HandleLevelUps(rep.LevelUps); Refresh(); });
+                    "Fındıkdere'de " + o.Fail.TitleTr + " vakası! Aqualf yine yaptı...", () => { G.HandleLevelUps(rep.LevelUps); Refresh(); }, "fx_fail");
             }
             else
             {
                 AudioFX.Play(Sfx.Fail, 0.7f);
                 ResultPopup.Show("Pek İşe Yaramadı", Theme.TextDim, o.MessageTr, null, null, "Aqualf'in iksiri tutmadı!",
-                    () => { G.HandleLevelUps(rep.LevelUps); Refresh(); });
+                    () => { G.HandleLevelUps(rep.LevelUps); Refresh(); }, "portrait_" + v.Id);
             }
             Refresh();
         }
@@ -339,12 +425,12 @@ namespace Sorchemist.UI
                     for (int i = 0; i < 3; i++)
                     {
                         var p = UIKit.Img(deco, "Pumpkin", UIKit.Hex("#FF8C1A"), UIKit.Circle);
-                        UIKit.Place(p.rectTransform, new Vector2(0.5f, 0), new Vector2(-60 + i * 60, 50 + (i % 2) * 40), Vector2.one * (90 + i * 20));
+                        UIKit.Place(p.rectTransform, new Vector2(0.5f, 0), new Vector2(-110 + i * 110, 40 + (i % 2) * 50), Vector2.one * (120 + i * 25));
                     }
                     break;
                 case HouseState.Frog:
                     var frog = UIKit.Img(deco, "Frog", UIKit.Hex("#3DBE4A"), UIKit.Circle);
-                    UIKit.Place(frog.rectTransform, new Vector2(0.5f, 0), new Vector2(90, 30), new Vector2(70, 55));
+                    UIKit.Place(frog.rectTransform, new Vector2(0.5f, 0), new Vector2(140, 20), new Vector2(90, 70));
                     var fz = UIKit.Txt(frog.transform, "F", "o o", 22, Color.black); UIKit.Stretch(fz.rectTransform);
                     break;
                 case HouseState.Floating:
@@ -355,12 +441,12 @@ namespace Sorchemist.UI
                     for (int i = 0; i < 6; i++)
                     {
                         var f = UIKit.Img(deco, "Foam", new Color(1, 1, 1, 0.9f), UIKit.Circle);
-                        UIKit.Place(f.rectTransform, new Vector2(0.5f, 0), new Vector2(-75 + i * 30, 40 + (i % 3) * 15), Vector2.one * 60);
+                        UIKit.Place(f.rectTransform, new Vector2(0.5f, 0), new Vector2(-130 + i * 52, 30 + (i % 3) * 25), Vector2.one * 90);
                     }
                     break;
                 case HouseState.Glowing:
                     var g = UIKit.Img(deco, "Glow", new Color(1f, 0.95f, 0.5f, 0.45f), UIKit.Circle);
-                    UIKit.Place(g.rectTransform, new Vector2(0.5f, 0), new Vector2(0, 120), Vector2.one * 260);
+                    UIKit.Place(g.rectTransform, new Vector2(0.5f, 0), new Vector2(0, 150), Vector2.one * 400);
                     g.transform.SetAsFirstSibling();
                     g.gameObject.AddComponent<Bouncer>().Glow = true;
                     break;
@@ -370,7 +456,7 @@ namespace Sorchemist.UI
                     break;
                 case HouseState.Happy:
                     var heart = UIKit.Txt(deco, "Happy", "<3", 40, Theme.Danger, TextAnchor.MiddleCenter, FontStyle.Bold);
-                    UIKit.Place(heart.rectTransform, new Vector2(0.5f, 0), new Vector2(80, 180), new Vector2(80, 60));
+                    UIKit.Place(heart.rectTransform, new Vector2(0.5f, 0), new Vector2(130, 280), new Vector2(80, 60));
                     break;
             }
             var v = VillageDatabase.GetVillager(house.name.Substring("House_".Length));

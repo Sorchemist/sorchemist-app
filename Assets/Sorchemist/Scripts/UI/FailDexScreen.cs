@@ -40,9 +40,18 @@ namespace Sorchemist.UI
                 var outline = card.gameObject.AddComponent<Outline>();
                 outline.effectColor = unlocked ? col : new Color(col.r, col.g, col.b, 0.3f);
                 outline.effectDistance = new Vector2(4, -4);
+                var qArt = Art.Get(unlocked ? "icon_seal" : "icon_question");
+                if (qArt != null)
+                {
+                    var ic = Art.Image(card.transform, "Icon", qArt);
+                    UIKit.Place(ic.rectTransform, new Vector2(0.5f, 1), new Vector2(0, -70), unlocked ? new Vector2(90, 90) : new Vector2(80, 110));
+                    ic.raycastTarget = false;
+                    var lt = UIKit.LabelOf(card).rectTransform;
+                    lt.offsetMax = new Vector2(lt.offsetMax.x, -120);
+                }
                 UIKit.LabelOf(card).text = unlocked
                     ? "<b>" + f.TitleTr + "</b>\n\n<size=24><color=#" + ColorUtility.ToHtmlStringRGB(col) + ">" + ResultPopup.RarityName(f.Rarity) + "</color></size>"
-                    : "<size=64>?</size>\n<size=24><color=#" + ColorUtility.ToHtmlStringRGB(col) + ">" + ResultPopup.RarityName(f.Rarity) + "</color></size>";
+                    : (qArt != null ? "" : "<size=64>?</size>\n") + "<size=24><color=#" + ColorUtility.ToHtmlStringRGB(col) + ">" + ResultPopup.RarityName(f.Rarity) + "</color></size>";
             }
         }
 
@@ -50,7 +59,7 @@ namespace Sorchemist.UI
         {
             ResultPopup.Show(f.TitleTr, ResultPopup.RarityColor(f.Rarity), f.DescriptionTr, f.ScienceTr,
                 ResultPopup.RarityName(f.Rarity) + " başarısızlık",
-                "Fail-Dex koleksiyonuma '" + f.TitleTr + "' eklendi!", null);
+                "Fail-Dex koleksiyonuma '" + f.TitleTr + "' eklendi!", null, "fx_fail");
         }
     }
 }

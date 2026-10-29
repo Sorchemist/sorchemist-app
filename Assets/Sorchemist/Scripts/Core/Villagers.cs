@@ -16,6 +16,7 @@ namespace Sorchemist.Core
         public string RoleTr;
         public int GridX, GridY;       // İzometrik haritadaki ev konumu
         public string ColorHex;        // Yer tutucu görsel rengi
+        public string[] AmbientTr;     // Görevi olmayan köylülerin sohbet cümleleri
     }
 
     [Serializable]
@@ -67,9 +68,9 @@ namespace Sorchemist.Core
             { PotionEffect.Fireworks, "fireworks_mishap" },
         };
 
-        private static void V(string id, string name, string role, int x, int y, string color)
+        private static void V(string id, string name, string role, int x, int y, string color, params string[] ambient)
         {
-            _villagers.Add(new VillagerData { Id = id, NameTr = name, RoleTr = role, GridX = x, GridY = y, ColorHex = color });
+            _villagers.Add(new VillagerData { Id = id, NameTr = name, RoleTr = role, GridX = x, GridY = y, ColorHex = color, AmbientTr = ambient });
         }
 
         private static QuestData Q(string id, string villager, int lvl, PotionEffect need, int gold, int xp,
@@ -90,16 +91,32 @@ namespace Sorchemist.Core
             _villagers = new List<VillagerData>();
             _quests = new List<QuestData>();
 
+            // Görevli köylüler (7x7 izometrik harita konumlarıyla)
             V("fistik", "Fıstık Dede", "Çiftçi", 1, 4, "#A9744F");
-            V("bal", "Bal Teyze", "Fırıncı", 3, 1, "#F5B041");
-            V("pirtik", "Minik Pırtık", "Afacan", 5, 3, "#F1948A");
-            V("tokmak", "Demirci Tokmak", "Demirci", 0, 1, "#5D6D7E");
-            V("ebe", "Ebe Nine", "Şifacı", 4, 5, "#AF7AC5");
-            V("fener", "Bekçi Fener", "Gece Bekçisi", 6, 1, "#F4D03F");
-            V("zeytin", "Kâhya Zeytin", "Köy Kâhyası", 3, 3, "#7DCEA0");
-            V("kopuk", "Çamaşırcı Köpük", "Çamaşırcı", 2, 6, "#85C1E9");
-            V("filiz", "Bahçıvan Filiz", "Bahçıvan", 6, 5, "#58D68D");
-            V("ruzgar", "Değirmenci Rüzgâr", "Değirmenci", 0, 5, "#D7BDE2");
+            V("bal", "Bal Teyze", "Fırıncı", 2, 2, "#F5B041");
+            V("pirtik", "Minik Pırtık", "Çoban", 1, 2, "#F1948A");
+            V("tokmak", "Demirci Tokmak", "Demirci", 1, 1, "#5D6D7E");
+            V("ebe", "Ebe Nine", "Şifacı", 2, 4, "#AF7AC5");
+            V("fener", "Fener", "Av Koruyucusu", 4, 4, "#F4D03F");
+            V("zeytin", "Kâhya Zeytin", "Hancı", 4, 2, "#7DCEA0");
+            V("kopuk", "Çamaşırcı Köpük", "Çamaşırcı", 4, 3, "#85C1E9");
+            V("filiz", "Filiz", "Ormancı", 3, 1, "#58D68D");
+            V("ruzgar", "Değirmenci Rüzgâr", "Değirmenci", 2, 1, "#D7BDE2");
+            // Diğer köy halkı (şimdilik sohbet; ileride görev verebilirler)
+            V("oduncu", "Kütük", "Oduncu", 1, 0, "#8D6E63", "Bu meşeler yüz yaşında. Külleri bile bereketlidir, potasyum doludur!", "Baltam keskin, odunum kuru. Kış hazır!");
+            V("marangoz", "Rende Usta", "Marangoz", 2, 0, "#A1887F", "Kazanın için yeni bir raf mı lazım? Ölç, biç, sonra kes!", "Talaş kokusu gibisi yok.");
+            V("tasusta", "Çakıl", "Taş Ustası", 4, 0, "#90A4AE", "Kireç taşını kızdırırsan sönmemiş kireç olur, bilir misin?", "Her taşın içinde bir heykel saklıdır.");
+            V("derici", "Tabak", "Derici", 4, 1, "#795548", "Deriyi yumuşatmak için tuz ve sabır gerekir.", "Kokuya alışırsın. Galiba.");
+            V("komurcu", "İs", "Kömürcü", 0, 2, "#455A64", "Kömür saf karbondur! Ben de biraz karbon gibi görünüyorum.", "Ocakların hepsi benim kömürümle yanar.");
+            V("kunduraci", "Çivi", "Kunduracı", 5, 2, "#6D4C41", "Ayakkabın delinmiş Aqualf. Damla gibi akıyorsun!", "Her adım bir hikâyedir.");
+            V("asci", "Kepçe", "Aşçı", 1, 3, "#EF6C00", "Mutfak da bir laboratuvar! Tuz, karbonat, sirke... hepsi kimya.", "Çorbanın sırrı: azıcık tuz.");
+            V("sucu", "Damla", "Sucu", 2, 3, "#29B6F6", "Kuyu suyu tertemiz. H2O, başka bir şey yok!", "Kovalarım hep dolu, gönlüm de.");
+            V("terzi", "Makas", "Terzi", 5, 3, "#AB47BC", "Kumaşları göztaşıyla mavi, pasla kırmızı boyarım.", "Ölçü al, ölçü al, sonra bir daha ölçü al.");
+            V("dokumaci", "İlmek", "Dokumacı", 0, 4, "#EC407A", "Tezgâhımda renk renk ipler... boyaları senden alıyorum!", "Bir ilmek daha, bir ilmek daha.");
+            V("balikci", "Olta", "Balıkçı", 5, 4, "#0277BD", "Nehir bugün cömert. Deniz suyu da tuz doludur, haberin olsun.", "Sabır balıkçının en iyi yemidir.");
+            V("comlekci", "Testi", "Çömlekçi", 1, 5, "#BF7B4C", "Kil ve kum, ateşte birleşince sağlam bir çömlek olur.", "Elime çamur bulaşmadan gün geçmez.");
+            V("berber", "Fırça", "Berber", 2, 5, "#7E57C2", "Saçların hâlâ isli mi? Gel bir düzelteyim!", "Köyün bütün dedikoduları bu koltukta konuşulur.");
+            V("arici", "Petek", "Arıcı", 4, 5, "#FBC02D", "Arılarım çiçekleri sever; sen de iksirleri.", "Bal, doğanın kendi simyasıdır.");
 
             Q("q_thirst", "filiz", 1, PotionEffect.Hydrate, 20, 15, "Fidelerim kana kana içti! Sana en güzel çiçeğimi ayırdım.",
                 new[] { "dewcap" },
