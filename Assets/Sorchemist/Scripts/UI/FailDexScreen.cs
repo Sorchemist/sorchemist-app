@@ -20,7 +20,7 @@ namespace Sorchemist.UI
             var sr = UIKit.Scroll(Root, "Scroll", true, false, out _grid);
             UIKit.Stretch((RectTransform)sr.transform, 0, 140, 0, 0);
             var g = UIKit.Grid(_grid, new Vector2(320, 300), new Vector2(18, 18), 24);
-            g.constraint = GridLayoutGroup.Constraint.FixedColumnCount; g.constraintCount = 3;
+            g.constraint = GridLayoutGroup.Constraint.FixedColumnCount; g.constraintCount = 5;
         }
 
         public override void Refresh()

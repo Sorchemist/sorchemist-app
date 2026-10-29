@@ -36,6 +36,12 @@ namespace Sorchemist.Game
             DontDestroyOnLoad(gameObject);
             Application.targetFrameRate = 60;
             Screen.sleepTimeout = SleepTimeout.NeverSleep;
+            // Oyun yatay (landscape) oynanır; iki yatay yöne de döner
+            Screen.autorotateToPortrait = false;
+            Screen.autorotateToPortraitUpsideDown = false;
+            Screen.autorotateToLandscapeLeft = true;
+            Screen.autorotateToLandscapeRight = true;
+            Screen.orientation = ScreenOrientation.AutoRotation;
 
             EnsureCamera();
             EnsureEventSystem();
@@ -90,7 +96,7 @@ namespace Sorchemist.Game
             canvas.sortingOrder = 10;
             var scaler = cgo.AddComponent<CanvasScaler>();
             scaler.uiScaleMode = CanvasScaler.ScaleMode.ScaleWithScreenSize;
-            scaler.referenceResolution = new Vector2(1080, 1920);
+            scaler.referenceResolution = new Vector2(1920, 1080);
             scaler.matchWidthOrHeight = 0.5f;
             cgo.AddComponent<GraphicRaycaster>();
 
@@ -101,12 +107,12 @@ namespace Sorchemist.Game
             UIKit.Stretch(SafeRoot);
             SafeRoot.gameObject.AddComponent<SafeArea>();
 
-            const float top = 150, bottom = 190;
+            const float top = 110, rail = 220;   // üst bilgi çubuğu + sol menü
             Content = UIKit.Rect("Content", SafeRoot);
-            UIKit.Stretch(Content, 0, top, 0, bottom);
+            UIKit.Stretch(Content, rail, top, 0, 0);
 
             _hud = SafeRoot.gameObject.AddComponent<HudBar>();
-            _hud.Build(SafeRoot, top, bottom);
+            _hud.Build(SafeRoot, top, rail);
 
             Overlay = UIKit.Rect("Overlay", SafeRoot);
             UIKit.Stretch(Overlay);
@@ -162,7 +168,7 @@ namespace Sorchemist.Game
 
         void Intro()
         {
-            DialoguePanel.Show(Overlay, "Aqualf", "Fındıkdere'nin Simyacısı", "#3E7CB1", new[]
+            DialoguePanel.Show(Overlay, "Aqualf", "Fındıkdere'nin Simyacısı", "#3E7CB1", "portrait_aqualf", new[]
             {
                 "Hoş geldin! Ben Aqualf, Fındıkdere köyünün tek simyacısıyım.",
                 "Köylüler dertlerini kapıma getirir, ben de onlara iksir hazırlarım.",

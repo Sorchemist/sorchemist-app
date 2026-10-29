@@ -55,7 +55,7 @@ namespace Sorchemist.UI
         {
             var tabs = UIKit.Rect("Tabs", Root);
             tabs.anchorMin = new Vector2(0, 1); tabs.anchorMax = Vector2.one; tabs.pivot = new Vector2(0.5f, 1);
-            tabs.sizeDelta = new Vector2(-32, 100); tabs.anchoredPosition = new Vector2(0, -12);
+            tabs.sizeDelta = new Vector2(-32, 84); tabs.anchoredPosition = new Vector2(0, -12);
             UIKit.HList(tabs, 12);
             AddTab(tabs, Tab.Brew, "Kazan");
             AddTab(tabs, Tab.Extract, "Ayrıştır");
@@ -64,7 +64,7 @@ namespace Sorchemist.UI
             foreach (Tab t in Enum.GetValues(typeof(Tab)))
             {
                 var p = UIKit.Rect("Panel_" + t, Root);
-                UIKit.Stretch(p, 0, 124, 0, 0);
+                UIKit.Stretch(p, 0, 108, 0, 0);
                 _panels[t] = p;
             }
             BuildBrew(_panels[Tab.Brew]);
@@ -75,7 +75,7 @@ namespace Sorchemist.UI
 
         void AddTab(RectTransform row, Tab t, string label)
         {
-            var b = UIKit.Btn(row, "Tab" + t, label, Theme.PanelLight, () => SetTab(t), 38);
+            var b = UIKit.Btn(row, "Tab" + t, label, Theme.PanelLight, () => SetTab(t), 36);
             _tabButtons[t] = b.GetComponent<Image>();
         }
 
@@ -95,70 +95,102 @@ namespace Sorchemist.UI
         }
 
         // =====================================================================
-        // KAZAN
+        // KAZAN  (yatay düzen: solda laboratuvar sahnesi, sağda elementler)
         // =====================================================================
+        const float CauldronX = 0.64f, CauldronY = 250f;
+
+        // Kazanın merkezi, sahne merkezine göre (efektler için)
+        Vector2 CauldronCenter
+        {
+            get { return new Vector2(_scene.rect.width * (CauldronX - 0.5f), CauldronY + 40 - _scene.rect.height * 0.5f); }
+        }
+
         void BuildBrew(RectTransform p)
         {
             var scene = UIKit.Panel(p, "Scene", UIKit.Hex("#231C3D"));
             _scene = scene.rectTransform;
-            _scene.anchorMin = new Vector2(0, 1); _scene.anchorMax = Vector2.one; _scene.pivot = new Vector2(0.5f, 1);
-            _scene.sizeDelta = new Vector2(-32, 700); _scene.anchoredPosition = Vector2.zero;
+            _scene.anchorMin = Vector2.zero; _scene.anchorMax = new Vector2(0.47f, 1);
+            _scene.offsetMin = new Vector2(16, 16); _scene.offsetMax = new Vector2(-8, 0);
+            scene.gameObject.AddComponent<RectMask2D>();
 
-            // Raflar (dekor)
-            for (int i = 0; i < 2; i++)
+            var bgArt = Art.Get("bg_lab");
+            if (bgArt != null)
             {
-                var shelf = UIKit.Img(_scene, "Shelf", UIKit.Hex("#3A2E5C"));
-                UIKit.Place(shelf.rectTransform, new Vector2(0.5f, 1), new Vector2(0, -150 - i * 130), new Vector2(980, 14));
-                for (int j = 0; j < 6; j++)
+                // Arka plan resmi sahneyi kaplar (Art: bg_lab)
+                var bg = Art.Image(_scene, "Background", bgArt);
+                bg.preserveAspect = false;
+                bg.raycastTarget = false;
+                var fit = bg.gameObject.AddComponent<AspectRatioFitter>();
+                fit.aspectMode = AspectRatioFitter.AspectMode.EnvelopeParent;
+                fit.aspectRatio = bgArt.rect.width / bgArt.rect.height;
+                var shade = UIKit.Img(_scene, "Shade", new Color(0.08f, 0.05f, 0.15f, 0.35f));
+                UIKit.Stretch(shade.rectTransform);
+                shade.raycastTarget = false;
+            }
+            else
+            {
+                // Raflar (yer tutucu dekor)
+                for (int i = 0; i < 2; i++)
                 {
-                    var jar = UIKit.Panel(_scene, "Jar", Color.HSVToRGB((i * 6 + j) / 12f, 0.5f, 0.9f) * new Color(1, 1, 1, 0.55f));
-                    UIKit.Place(jar.rectTransform, new Vector2(0.5f, 1), new Vector2(-400 + j * 160 + i * 60, -110 - i * 130), new Vector2(50, 70));
+                    var shelf = UIKit.Img(_scene, "Shelf", UIKit.Hex("#3A2E5C"));
+                    UIKit.Place(shelf.rectTransform, new Vector2(0.5f, 1), new Vector2(0, -170 - i * 130), new Vector2(700, 14));
+                    for (int j = 0; j < 6; j++)
+                    {
+                        var jar = UIKit.Panel(_scene, "Jar", Color.HSVToRGB((i * 6 + j) / 12f, 0.5f, 0.9f) * new Color(1, 1, 1, 0.55f));
+                        UIKit.Place(jar.rectTransform, new Vector2(0.5f, 1), new Vector2(-300 + j * 120 + i * 40, -130 - i * 130), new Vector2(44, 64));
+                    }
                 }
             }
 
-            _aqualf = AqualfView.Create(_scene, new Vector2(0.18f, 0), new Vector2(0, 230), 0.95f);
+            _aqualf = AqualfView.Create(_scene, new Vector2(0.24f, 0), new Vector2(0, 260), 1f);
 
-            // Kazan + ocak
-            _flame = UIKit.Img(_scene, "Flame", UIKit.Hex("#FF9F1C"), UIKit.Triangle);
-            UIKit.Place(_flame.rectTransform, new Vector2(0.62f, 0), new Vector2(0, 30), new Vector2(150, 110), new Vector2(0.5f, 0));
-            var rim = UIKit.Img(_scene, "Cauldron", UIKit.Hex("#15121F"), UIKit.Circle);
-            UIKit.Place(rim.rectTransform, new Vector2(0.62f, 0), new Vector2(0, 230), new Vector2(380, 330));
+            // Kazan + ocak (Art: cauldron, flame)
+            var flameArt = Art.Get("flame");
+            _flame = UIKit.Img(_scene, "Flame", flameArt != null ? Color.white : UIKit.Hex("#FF9F1C"), flameArt ?? UIKit.Triangle);
+            UIKit.Place(_flame.rectTransform, new Vector2(CauldronX, 0), new Vector2(0, 30), new Vector2(160, 120), new Vector2(0.5f, 0));
+            var potArt = Art.Get("cauldron");
+            var rim = potArt != null ? Art.Image(_scene, "Cauldron", potArt) : UIKit.Img(_scene, "Cauldron", UIKit.Hex("#15121F"), UIKit.Circle);
+            UIKit.Place(rim.rectTransform, new Vector2(CauldronX, 0), new Vector2(0, CauldronY), new Vector2(400, 350));
             _liquid = UIKit.Img(rim.transform, "Liquid", UIKit.Hex("#3B3163"), UIKit.Circle);
-            UIKit.Place(_liquid.rectTransform, new Vector2(0.5f, 0.5f), new Vector2(0, 50), new Vector2(320, 150));
+            UIKit.Place(_liquid.rectTransform, new Vector2(0.5f, 0.5f), new Vector2(0, potArt != null ? 95 : 50), new Vector2(potArt != null ? 280 : 330, potArt != null ? 70 : 150));
 
-            _capacity = UIKit.Txt(_scene, "Capacity", "", 32, Theme.TextDim);
-            UIKit.Place(_capacity.rectTransform, new Vector2(0.62f, 0), new Vector2(0, 420), new Vector2(400, 50));
+            _capacity = UIKit.Txt(_scene, "Capacity", "", 32, Theme.Text);
+            UIKit.Place(_capacity.rectTransform, new Vector2(CauldronX, 0), new Vector2(0, 460), new Vector2(400, 50));
+            _capacity.gameObject.AddComponent<Outline>().effectColor = new Color(0, 0, 0, 0.7f);
 
             _chips = UIKit.Rect("Chips", _scene);
-            UIKit.Place(_chips, new Vector2(0.5f, 1), new Vector2(0, -40), new Vector2(1000, 70));
+            UIKit.Place(_chips, new Vector2(0.5f, 1), new Vector2(0, -50), new Vector2(740, 70));
             var h = UIKit.HList(_chips, 10);
             h.childForceExpandWidth = false; h.childAlignment = TextAnchor.MiddleCenter;
 
-            // Eylem butonları
-            var row = UIKit.Rect("Actions", p);
+            // ---- Sağ sütun ----
+            var right = UIKit.Rect("RightColumn", p);
+            right.anchorMin = new Vector2(0.47f, 0); right.anchorMax = Vector2.one;
+            right.offsetMin = new Vector2(8, 16); right.offsetMax = new Vector2(-16, 0);
+
+            var row = UIKit.Rect("Actions", right);
             row.anchorMin = new Vector2(0, 1); row.anchorMax = Vector2.one; row.pivot = new Vector2(0.5f, 1);
-            row.sizeDelta = new Vector2(-32, 130); row.anchoredPosition = new Vector2(0, -715);
+            row.sizeDelta = new Vector2(0, 110); row.anchoredPosition = Vector2.zero;
             UIKit.HList(row, 16);
-            var clear = UIKit.Btn(row, "Clear", "Boşalt", Theme.PanelLight, () => { _cauldron.Clear(); RefreshBrew(); }, 40);
+            var clear = UIKit.Btn(row, "Clear", "Boşalt", Theme.PanelLight, () => { _cauldron.Clear(); RefreshBrew(); }, 38);
             UIKit.LE(clear, -1, -1, 1);
-            var brew = UIKit.Btn(row, "Brew", "PİŞİR!", UIKit.Hex("#E67E22"), OnBrew, 52);
+            var brew = UIKit.Btn(row, "Brew", "PİŞİR!", UIKit.Hex("#E67E22"), OnBrew, 50);
             UIKit.LE(brew, -1, -1, 2);
 
-            // Element seçici
-            var toggles = UIKit.Rect("Toggles", p);
+            var toggles = UIKit.Rect("Toggles", right);
             toggles.anchorMin = new Vector2(0, 1); toggles.anchorMax = Vector2.one; toggles.pivot = new Vector2(0.5f, 1);
-            toggles.sizeDelta = new Vector2(-32, 80); toggles.anchoredPosition = new Vector2(0, -860);
+            toggles.sizeDelta = new Vector2(0, 72); toggles.anchoredPosition = new Vector2(0, -124);
             UIKit.HList(toggles, 12);
-            _invToggle = UIKit.Btn(toggles, "Inv", "Envanterim", Theme.Magic, () => { _showTable = false; RefreshBrew(); }, 32).GetComponent<Image>();
-            _tableToggle = UIKit.Btn(toggles, "Table", "Periyodik Tablo (118)", Theme.PanelLight, () => { _showTable = true; RefreshBrew(); }, 32).GetComponent<Image>();
+            _invToggle = UIKit.Btn(toggles, "Inv", "Envanterim", Theme.Magic, () => { _showTable = false; RefreshBrew(); }, 30).GetComponent<Image>();
+            _tableToggle = UIKit.Btn(toggles, "Table", "Periyodik Tablo (118)", Theme.PanelLight, () => { _showTable = true; RefreshBrew(); }, 30).GetComponent<Image>();
 
-            _elementArea = UIKit.Rect("Elements", p);
-            UIKit.Stretch(_elementArea, 16, 950, 16, 10);
+            _elementArea = UIKit.Rect("Elements", right);
+            UIKit.Stretch(_elementArea, 0, 210, 0, 0);
 
             _invScroll = UIKit.Scroll(_elementArea, "Inventory", true, false, out _invContent);
             UIKit.Stretch((RectTransform)_invScroll.transform);
             var g = UIKit.Grid(_invContent, new Vector2(150, 170), new Vector2(14, 14), 10);
-            g.constraint = GridLayoutGroup.Constraint.FixedColumnCount; g.constraintCount = 6;
+            g.constraint = GridLayoutGroup.Constraint.FixedColumnCount; g.constraintCount = 5;
 
             _tableScroll = UIKit.Scroll(_elementArea, "Table", true, true, out _tableContent);
             UIKit.Stretch((RectTransform)_tableScroll.transform);
@@ -203,7 +235,7 @@ namespace Sorchemist.UI
                 }
                 _cauldron[e.Symbol] = InCauldron(e.Symbol) + 1;
                 AudioFX.Play(Sfx.Bubble, 0.7f, 0.2f);
-                FX.I.Bubbles(_scene, CategoryColor(e.Category), new Vector2(_scene.rect.width * 0.12f, -120), 5);
+                FX.I.Bubbles(_scene, CategoryColor(e.Category), CauldronCenter, 5);
                 RefreshBrew();
                 return;
             }
@@ -223,7 +255,7 @@ namespace Sorchemist.UI
                 return;
             }
             RectTransform body;
-            var m = UIKit.Modal(G.Overlay, e.Number + ". " + e.NameTr + " (" + e.Symbol + ")", out body, 1000);
+            var m = UIKit.Modal(G.Overlay, e.Number + ". " + e.NameTr + " (" + e.Symbol + ")", out body, 800, 1100);
             UIKit.VList(body, 16, 10);
             var t = UIKit.Txt(body, "Info",
                 "Kategori: " + ElementDatabase.CategoryNameTr(e.Category) +
@@ -231,7 +263,7 @@ namespace Sorchemist.UI
                 "\nPeriyot: " + e.Period + (e.Group > 0 ? "   Grup: " + e.Group : "   (f-blok)") +
                 (e.Radioactive ? "\n<color=#9CFF8A>Radyoaktif!</color>" : "") +
                 "\n\n" + where, 36, Theme.Text, TextAnchor.UpperLeft);
-            UIKit.LE(t, 560);
+            UIKit.LE(t, 480);
             UIKit.LE(UIKit.Btn(body, "Close", "Kapat", Theme.Magic, () => Destroy(m.gameObject)), 120);
         }
 
@@ -256,7 +288,7 @@ namespace Sorchemist.UI
             UIKit.Clear(_chips);
             if (_cauldron.Count == 0)
             {
-                var t = UIKit.Txt(_chips, "Empty", "Kazan boş. Aşağıdan element seç!", 32, Theme.TextDim);
+                var t = UIKit.Txt(_chips, "Empty", "Kazan boş. Sağdan element seç!", 32, Theme.TextDim);
                 UIKit.LE(t, 60, 700);
             }
             foreach (var kv in _cauldron.ToList())
@@ -352,7 +384,7 @@ namespace Sorchemist.UI
 
         void PlayResultFX(BrewResult r)
         {
-            var center = new Vector2(_scene.rect.width * 0.12f, -100);
+            var center = CauldronCenter;
             var ov = G.Overlay;
             if (r.Success)
             {
@@ -459,7 +491,7 @@ namespace Sorchemist.UI
             if (_idleBubble > 0.9f)   // Kazan hafifçe fokurdasın (ASMR)
             {
                 _idleBubble = 0;
-                FX.I.Bubbles(_scene, _liquid.color, new Vector2(_scene.rect.width * 0.12f + UnityEngine.Random.Range(-80, 80), -110), 2, 60, false);
+                FX.I.Bubbles(_scene, _liquid.color, CauldronCenter + new Vector2(UnityEngine.Random.Range(-80, 80), 0), 2, 60, false);
                 if (State.SoundOn && UnityEngine.Random.value < 0.6f) AudioFX.Play(Sfx.Bubble, 0.2f, 0.3f);
             }
         }

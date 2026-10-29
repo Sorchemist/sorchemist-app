@@ -12,7 +12,8 @@ namespace Sorchemist.UI
 
     public class AqualfView : MonoBehaviour
     {
-        Image _robe, _head, _hat, _beard, _glow;
+        Image _robe, _head, _hat, _beard, _glow, _sprite;
+        bool _useArt;
         Text _face, _bubble;
         RectTransform _root;
         Coroutine _anim;
@@ -43,6 +44,15 @@ namespace Sorchemist.UI
             UIKit.Place(_hat.rectTransform, new Vector2(0.5f, 0), new Vector2(0, 375), new Vector2(170, 170));
             _face = UIKit.Txt(rt, "Face", "^_^", 34, UIKit.Hex("#3A2A1A"), TextAnchor.MiddleCenter, FontStyle.Bold);
             UIKit.Place(_face.rectTransform, new Vector2(0.5f, 0), new Vector2(0, 275), new Vector2(160, 60));
+            // Gerçek sanat varsa (SorchemistArt/aqualf_idle.png) yer tutucu şekilleri gizle
+            var idle = Art.Get("aqualf_idle");
+            _useArt = idle != null;
+            if (_useArt)
+            {
+                foreach (var g in new Graphic[] { _robe, _beard, _head, _hat, _face }) g.gameObject.SetActive(false);
+                _sprite = Art.Image(rt, "Sprite", idle);
+                UIKit.Stretch(_sprite.rectTransform, -40, -30, -40, 0);
+            }
             _bubble = UIKit.Txt(rt, "Bubble", "", 30, Theme.Text, TextAnchor.MiddleCenter, FontStyle.Italic);
             UIKit.Place(_bubble.rectTransform, new Vector2(0.5f, 1), new Vector2(0, 40), new Vector2(420, 90));
             SetMood(AqualfMood.Idle);
@@ -72,6 +82,8 @@ namespace Sorchemist.UI
                 case AqualfMood.Singed: _face.text = "x_x"; break;
                 case AqualfMood.Glowing: _face.text = "*_*"; break;
             }
+            if (_useArt)
+                _sprite.sprite = Art.First("aqualf_" + m.ToString().ToLowerInvariant(), "aqualf_idle");
             _glow.color = m == AqualfMood.Glowing ? new Color(0.5f, 1f, 0.6f, 0.45f) : new Color(0, 0, 0, 0);
         }
 
@@ -90,6 +102,7 @@ namespace Sorchemist.UI
             if (_anim != null) StopCoroutine(_anim);
             _hat.color = UIKit.Hex("#5B2C83");
             _beard.color = UIKit.Hex("#EDEDED");
+            if (_useArt) _sprite.color = Color.white;
             if (r.Success) { SetMood(AqualfMood.Happy); Say("Eureka!"); _anim = StartCoroutine(Jump()); return; }
 
             FailVisual v = r.Fail != null ? r.Fail.Visual : FailVisual.Sludge;
@@ -103,15 +116,18 @@ namespace Sorchemist.UI
                 case FailVisual.Explosion:
                     SetMood(AqualfMood.Singed); Say("...Bu planlanmıştı.");
                     _beard.color = UIKit.Hex("#555555");
+                    if (_useArt) _sprite.color = UIKit.Hex("#9A8F8A");   // isli
                     _anim = StartCoroutine(Jump());
                     break;
                 case FailVisual.Glow:
                     SetMood(AqualfMood.Glowing); Say("Kendimi... parlak hissediyorum.");
                     _beard.color = UIKit.Hex("#9CFF8A");
+                    if (_useArt) _sprite.color = UIKit.Hex("#B8FFB0");
                     break;
                 case FailVisual.GoldFlash:
                     SetMood(AqualfMood.Shocked); Say("ALTIN! ...değilmiş.");
                     _hat.color = Theme.Gold; _beard.color = Theme.Gold;
+                    if (_useArt) _sprite.color = UIKit.Hex("#FFE07A");
                     break;
                 case FailVisual.Nothing:
                     SetMood(AqualfMood.Idle); Say("Soylu ama sıkıcı.");
@@ -119,6 +135,7 @@ namespace Sorchemist.UI
                 case FailVisual.Smoke:
                     SetMood(AqualfMood.Singed); Say("*öksürük öksürük*");
                     _hat.color = UIKit.Hex("#9A9A9A");
+                    if (_useArt) _sprite.color = UIKit.Hex("#B0B0B0");
                     break;
                 default:
                     SetMood(AqualfMood.Shocked); Say("Hmm. Not alındı.");

@@ -22,7 +22,7 @@ namespace Sorchemist.UI
         public static void Run(RectTransform overlay, RawMaterialData raw, float limit, Action<float> done)
         {
             RectTransform body;
-            var modal = UIKit.Modal(overlay, RawMaterialDatabase.MethodNameTr(raw.Method) + ": " + raw.NameTr, out body, 1200);
+            var modal = UIKit.Modal(overlay, RawMaterialDatabase.MethodNameTr(raw.Method) + ": " + raw.NameTr, out body, 900, 1300);
             var g = modal.gameObject.AddComponent<DistillMinigame>();
             g._done = done; g._limit = limit; g._seed = UnityEngine.Random.value * 50f;
             g.Build(body, raw);
@@ -31,21 +31,21 @@ namespace Sorchemist.UI
         void Build(RectTransform body, RawMaterialData raw)
         {
             var info = UIKit.Txt(body, "Info", raw.FlavorTr + "\n\n<color=#7CF2C8>Basılı tutarak imleci yeşil bantta tut!</color>", 34, Theme.TextDim);
-            UIKit.Place(info.rectTransform, new Vector2(0.5f, 1), new Vector2(0, -80), new Vector2(860, 200));
+            UIKit.Place(info.rectTransform, new Vector2(0.5f, 1), new Vector2(0, -60), new Vector2(1180, 130));
 
             // Damıtma şişesi (dekor)
             var flask = UIKit.Img(body, "Flask", UIKit.Hex(raw.ColorHex), UIKit.Circle);
-            UIKit.Place(flask.rectTransform, new Vector2(0.5f, 0.5f), new Vector2(-250, 80), new Vector2(220, 220));
+            UIKit.Place(flask.rectTransform, new Vector2(0.5f, 0.5f), new Vector2(-250, 110), new Vector2(180, 180));
             var tube = UIKit.Img(body, "Tube", new Color(1, 1, 1, 0.5f));
             UIKit.Place(tube.rectTransform, new Vector2(0.5f, 0.5f), new Vector2(0, 150), new Vector2(380, 18));
             tube.rectTransform.localRotation = Quaternion.Euler(0, 0, -12);
             _drop = UIKit.Img(body, "Drop", Theme.Accent, UIKit.Circle);
-            UIKit.Place(_drop.rectTransform, new Vector2(0.5f, 0.5f), new Vector2(220, 100), new Vector2(40, 40));
+            UIKit.Place(_drop.rectTransform, new Vector2(0.5f, 0.5f), new Vector2(220, 110), new Vector2(40, 40));
             var beaker = UIKit.Panel(body, "Beaker", new Color(1, 1, 1, 0.15f));
-            UIKit.Place(beaker.rectTransform, new Vector2(0.5f, 0.5f), new Vector2(230, 0), new Vector2(160, 160));
+            UIKit.Place(beaker.rectTransform, new Vector2(0.5f, 0.5f), new Vector2(230, 50), new Vector2(140, 120));
 
             _track = UIKit.Img(body, "Track", Theme.PanelLight).rectTransform;
-            UIKit.Place(_track, new Vector2(0.5f, 0.5f), new Vector2(0, -150), new Vector2(820, 80));
+            UIKit.Place(_track, new Vector2(0.5f, 0.5f), new Vector2(0, -70), new Vector2(1000, 80));
             _bandImg = UIKit.Img(_track, "Band", UIKit.Hex("#5BD67A"));
             _band = _bandImg.rectTransform;
             _band.anchorMin = new Vector2(0, 0); _band.anchorMax = new Vector2(BandWidth, 1);
@@ -55,10 +55,10 @@ namespace Sorchemist.UI
             _cursorRt.sizeDelta = new Vector2(16, 0);
 
             _status = UIKit.Txt(body, "Status", "", 36, Theme.Text);
-            UIKit.Place(_status.rectTransform, new Vector2(0.5f, 0.5f), new Vector2(0, -240), new Vector2(860, 60));
+            UIKit.Place(_status.rectTransform, new Vector2(0.5f, 0.5f), new Vector2(0, -150), new Vector2(1000, 60));
 
             var b = UIKit.Btn(body, "Heat", "ISIT (basılı tut)", UIKit.Hex("#C0392B"), null, 42);
-            UIKit.Place((RectTransform)b.transform, new Vector2(0.5f, 0), new Vector2(0, 100), new Vector2(800, 180));
+            UIKit.Place((RectTransform)b.transform, new Vector2(0.5f, 0), new Vector2(0, 95), new Vector2(700, 170));
             _hold = b.gameObject.AddComponent<HoldButton>();
         }
 
@@ -81,7 +81,7 @@ namespace Sorchemist.UI
                 _inBand += dt;
                 // Damla düşür (görsel tatmin)
                 var p = _drop.rectTransform.anchoredPosition;
-                p.y -= 260 * dt; if (p.y < 20) { p.y = 100; AudioFX.Play(Sfx.Bubble, 0.25f, 0.4f); }
+                p.y -= 260 * dt; if (p.y < 50) { p.y = 110; AudioFX.Play(Sfx.Bubble, 0.25f, 0.4f); }
                 _drop.rectTransform.anchoredPosition = p;
             }
             _bandImg.color = inside ? UIKit.Hex("#7CF2C8") : UIKit.Hex("#5BD67A");

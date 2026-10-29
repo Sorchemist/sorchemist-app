@@ -285,16 +285,20 @@ namespace Sorchemist.UI
         }
 
         /// <summary>Karartılmış arka planlı açılır pencere. Kapatmak için döndürülen kökü yok et.</summary>
-        public static RectTransform Modal(Transform overlay, string title, out RectTransform body, float height = 1300)
+        // Yatay ekran için (referans 1920x1080) güvenli azami kart boyutu
+        public const float MaxModalHeight = 940;
+
+        public static RectTransform Modal(Transform overlay, string title, out RectTransform body, float height = 900, float width = 1300)
         {
+            height = Mathf.Min(height, MaxModalHeight);
             var dim = Img(overlay, "Modal", Theme.Dim);
             Stretch(dim.rectTransform);
             var card = Panel(dim.transform, "Card", Theme.Panel);
-            Place(card.rectTransform, new Vector2(0.5f, 0.5f), Vector2.zero, new Vector2(960, height));
-            var t = Txt(card.transform, "Title", title, 56, Theme.Accent, TextAnchor.MiddleCenter, FontStyle.Bold);
-            Place(t.rectTransform, new Vector2(0.5f, 1), new Vector2(0, -70), new Vector2(880, 100));
+            Place(card.rectTransform, new Vector2(0.5f, 0.5f), Vector2.zero, new Vector2(width, height));
+            var t = Txt(card.transform, "Title", title, 50, Theme.Accent, TextAnchor.MiddleCenter, FontStyle.Bold);
+            Place(t.rectTransform, new Vector2(0.5f, 1), new Vector2(0, -55), new Vector2(width - 80, 90));
             body = Rect("Body", card.transform);
-            Stretch(body, 40, 140, 40, 40);
+            Stretch(body, 40, 110, 40, 30);
             return dim.rectTransform;
         }
     }

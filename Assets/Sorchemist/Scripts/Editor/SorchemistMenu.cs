@@ -25,14 +25,19 @@ namespace Sorchemist.EditorTools
             // Hedef API: yüklü en yüksek seviye (Play şu an yeni uygulamalar için API 36 istiyor)
             PlayerSettings.Android.targetSdkVersion = AndroidSdkVersions.AndroidApiLevelAuto;
 
-            PlayerSettings.defaultInterfaceOrientation = UIOrientation.Portrait;
+            // Yatay oyun: iki yatay yöne döner, dikeye dönmez
+            PlayerSettings.defaultInterfaceOrientation = UIOrientation.AutoRotation;
+            PlayerSettings.allowedAutorotateToPortrait = false;
+            PlayerSettings.allowedAutorotateToPortraitUpsideDown = false;
+            PlayerSettings.allowedAutorotateToLandscapeLeft = true;
+            PlayerSettings.allowedAutorotateToLandscapeRight = true;
             EditorUserBuildSettings.buildAppBundle = true;   // Play Store .aab ister
 
             Debug.Log("[Sorchemist] Android ayarları uygulandı. Paket adı: " + PackageName +
                       "\nSıradaki adım: Project Settings > Player > Publishing Settings'ten Keystore oluştur.");
             EditorUtility.DisplayDialog("Sorchemist",
                 "Android ayarları uygulandı!\n\nPaket adı: " + PackageName +
-                "\nÇıktı: .aab (App Bundle)\nMimari: ARM64 + ARMv7, IL2CPP\nYön: Dikey\n\n" +
+                "\nÇıktı: .aab (App Bundle)\nMimari: ARM64 + ARMv7, IL2CPP\nYön: Yatay\n\n" +
                 "Sıradaki adım: Keystore oluşturmak (KURULUM.md, Adım 7).", "Tamam");
         }
 

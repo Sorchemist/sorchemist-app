@@ -20,7 +20,7 @@ namespace Sorchemist.UI
         public static void Run(RectTransform overlay, float limit, Color liquid, Action<float> done)
         {
             RectTransform body;
-            var modal = UIKit.Modal(overlay, "Karıştır!", out body, 1400);
+            var modal = UIKit.Modal(overlay, "Karıştır!", out body, 900, 1300);
             var g = modal.gameObject.AddComponent<StirMinigame>();
             g._done = done; g._limit = limit; g._liquid = liquid;
             g.Build(body);
@@ -28,18 +28,19 @@ namespace Sorchemist.UI
 
         void Build(RectTransform body)
         {
-            var info = UIKit.Txt(body, "Info", "Parmağınla kazanın içinde daireler çiz!", 38, Theme.TextDim);
-            UIKit.Place(info.rectTransform, new Vector2(0.5f, 1), new Vector2(0, -40), new Vector2(860, 80));
+            var info = UIKit.Txt(body, "Info", "Parmağınla kazanın içinde daireler çiz!\n3 tam tur = mükemmel karışım", 36, Theme.TextDim);
+            UIKit.Place(info.rectTransform, new Vector2(0.5f, 0.5f), new Vector2(330, 200), new Vector2(520, 140));
 
-            var rim = UIKit.Img(body, "Rim", UIKit.Hex("#2B2B33"), UIKit.Circle);
+            var potArt = Art.Get("cauldron_top");
+            var rim = UIKit.Img(body, "Rim", potArt != null ? Color.white : UIKit.Hex("#2B2B33"), potArt ?? UIKit.Circle);
             _pot = rim.rectTransform;
-            UIKit.Place(_pot, new Vector2(0.5f, 0.5f), new Vector2(0, 40), new Vector2(720, 720));
+            UIKit.Place(_pot, new Vector2(0.5f, 0.5f), new Vector2(-260, -10), new Vector2(660, 660));
             var liquid = UIKit.Img(_pot, "Liquid", _liquid, UIKit.Circle);
-            UIKit.Place(liquid.rectTransform, new Vector2(0.5f, 0.5f), Vector2.zero, new Vector2(640, 640));
+            UIKit.Place(liquid.rectTransform, new Vector2(0.5f, 0.5f), Vector2.zero, new Vector2(580, 580));
             liquid.raycastTarget = false;
 
             _swirl = UIKit.Rect("Swirl", _pot);
-            UIKit.Place(_swirl, new Vector2(0.5f, 0.5f), Vector2.zero, new Vector2(640, 640));
+            UIKit.Place(_swirl, new Vector2(0.5f, 0.5f), Vector2.zero, new Vector2(580, 580));
             for (int i = 0; i < 6; i++)
             {
                 var dot = UIKit.Img(_swirl, "d", new Color(1, 1, 1, 0.35f), UIKit.Circle);
@@ -57,16 +58,16 @@ namespace Sorchemist.UI
             drag.OnRelease = () => _hasLast = false;
 
             var barBg = UIKit.Img(body, "BarBg", Theme.PanelLight);
-            UIKit.Place(barBg.rectTransform, new Vector2(0.5f, 0), new Vector2(0, 150), new Vector2(800, 36));
+            UIKit.Place(barBg.rectTransform, new Vector2(0.5f, 0.5f), new Vector2(330, 40), new Vector2(480, 36));
             _fill = UIKit.Img(barBg.transform, "Fill", Theme.Accent);
             _fill.rectTransform.anchorMin = Vector2.zero; _fill.rectTransform.anchorMax = new Vector2(0, 1);
             _fill.rectTransform.offsetMin = _fill.rectTransform.offsetMax = Vector2.zero;
 
             _status = UIKit.Txt(body, "Status", "", 36, Theme.Text);
-            UIKit.Place(_status.rectTransform, new Vector2(0.5f, 0), new Vector2(0, 80), new Vector2(860, 60));
+            UIKit.Place(_status.rectTransform, new Vector2(0.5f, 0.5f), new Vector2(330, -30), new Vector2(520, 60));
 
             var skip = UIKit.Btn(body, "Skip", "Karıştırmadan geç", Theme.PanelLight, () => Finish(0f), 32);
-            UIKit.Place((RectTransform)skip.transform, new Vector2(0.5f, 0), new Vector2(0, 10), new Vector2(460, 80));
+            UIKit.Place((RectTransform)skip.transform, new Vector2(0.5f, 0.5f), new Vector2(330, -200), new Vector2(460, 90));
         }
 
         void OnDrag(Vector2 local)
@@ -83,7 +84,7 @@ namespace Sorchemist.UI
                     if (UnityEngine.Random.value < 0.15f) AudioFX.Play(Sfx.Bubble, 0.35f, 0.3f);
                 }
             }
-            _spoon.anchoredPosition = local.normalized * Mathf.Min(local.magnitude, 280f);
+            _spoon.anchoredPosition = local.normalized * Mathf.Min(local.magnitude, 250f);
             _spoon.localRotation = Quaternion.Euler(0, 0, ang - 90f);
             _lastAngle = ang; _hasLast = true;
         }
