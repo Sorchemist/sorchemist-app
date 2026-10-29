@@ -2,6 +2,7 @@
 // Şu an yer tutucu şekiller kullanır. Sanat hazır olunca Image.sprite'ları değiştirmen yeterli.
 using System;
 using System.Collections.Generic;
+using System.Linq;
 using Sorchemist.Core;
 using Sorchemist.Game;
 using UnityEngine;
@@ -22,6 +23,10 @@ namespace Sorchemist.UI
         readonly Dictionary<string, Text> _nodeTimers = new Dictionary<string, Text>();
         readonly Dictionary<string, Image> _nodeImages = new Dictionary<string, Image>();
         float _tick;
+        RectTransform _mystery;
+        Image _mysteryImg;
+        Text _mysteryLabel;
+        int _mysterySpot = -1;
         readonly HashSet<string> _artHouses = new HashSet<string>();
         readonly HashSet<string> _artNodes = new HashSet<string>();
 
@@ -139,6 +144,7 @@ namespace Sorchemist.UI
             items.Add(new KeyValuePair<int, Action>(LabPos.x + LabPos.y, BuildLab));
             items.Sort((a, b) => a.Key.CompareTo(b.Key));
             foreach (var it in items) it.Value();
+            BuildMystery();
 
             // Uzaklaştırılmış görünüm: köyün büyük kısmı ekrana sığsın
             const float zoom = 0.6f;
@@ -272,13 +278,13 @@ namespace Sorchemist.UI
 
         void BuildLab()
         {
-            var rt = ObjectRoot("Lab", LabPos.x, LabPos.y, new Vector2(320, 440));
+            var rt = ObjectRoot("Lab", LabPos.x, LabPos.y, new Vector2(560, 500));
             var towerArt = Art.First("lab_tower", "cauldron");
             Image tower;
             if (towerArt != null)
             {
                 tower = Art.Image(rt, "Tower", towerArt);
-                UIKit.Place(tower.rectTransform, new Vector2(0.5f, 0), new Vector2(0, 0), new Vector2(320, 420), new Vector2(0.5f, 0));
+                UIKit.Place(tower.rectTransform, new Vector2(0.5f, 0), new Vector2(0, -20), new Vector2(560, 500), new Vector2(0.5f, 0));
             }
             else
             {
@@ -294,6 +300,78 @@ namespace Sorchemist.UI
             UIKit.Place(label.rectTransform, new Vector2(0.5f, 0), new Vector2(0, -10), new Vector2(340, 40));
             label.gameObject.AddComponent<Outline>().effectColor = Color.black;
             tower.gameObject.AddComponent<Button>().onClick.AddListener(() => G.Show(ScreenId.Lab));
+        }
+
+        // ---------- Gizemli kutu (her 6 saatte bir) ----------
+        // Kutunun belirebileceği yerler: laboratuvarın çevresi
+        static readonly Vector2[] MysterySpots =
+        {
+            new Vector2(300, -40), new Vector2(-300, -40), new Vector2(0, -200), new Vector2(330, 120)
+        };
+
+        void BuildMystery()
+        {
+            _mystery = UIKit.Rect("MysteryBox", _objects);
+            UIKit.Place(_mystery, new Vector2(0.5f, 0.5f), IsoToLocal(LabPos.x, LabPos.y), new Vector2(200, 230), new Vector2(0.5f, 0));
+            var glow = UIKit.Img(_mystery, "Glow", new Color(1f, 0.9f, 0.4f, 0.5f), UIKit.Circle);
+            UIKit.Place(glow.rectTransform, new Vector2(0.5f, 0), new Vector2(0, 100), new Vector2(260, 260));
+            glow.raycastTarget = false;
+            glow.gameObject.AddComponent<Bouncer>().Glow = true;
+            var art = Art.First("mystery_box_2", "mystery_box_1");
+            _mysteryImg = art != null ? Art.Image(_mystery, "Box", art) : UIKit.Img(_mystery, "Box", Theme.Gold, UIKit.Diamond);
+            UIKit.Place(_mysteryImg.rectTransform, new Vector2(0.5f, 0), new Vector2(0, 30), new Vector2(170, 170), new Vector2(0.5f, 0));
+            _mysteryImg.gameObject.AddComponent<Bouncer>().Amplitude = 14;
+            _mysteryImg.gameObject.AddComponent<Button>().onClick.AddListener(TapMystery);
+            _mysteryLabel = UIKit.Txt(_mystery, "Label", "", 28, Theme.Gold, TextAnchor.MiddleCenter, FontStyle.Bold);
+            UIKit.Place(_mysteryLabel.rectTransform, new Vector2(0.5f, 0), new Vector2(0, 6), new Vector2(320, 40));
+            _mysteryLabel.gameObject.AddComponent<Outline>().effectColor = Color.black;
+        }
+
+        void RefreshMystery()
+        {
+            if (_mystery == null) return;
+            long now = DateTimeOffset.UtcNow.ToUnixTimeSeconds();
+            bool ready = Session.MysteryReady(now);
+            int spot = State.MysteryOpened % MysterySpots.Length;
+            if (spot != _mysterySpot)
+            {
+                _mysterySpot = spot;
+                _mystery.anchoredPosition = IsoToLocal(LabPos.x, LabPos.y) + MysterySpots[spot];
+                _mystery.SetAsLastSibling();
+            }
+            _mystery.Find("Glow").gameObject.SetActive(ready);
+            _mysteryImg.color = ready ? Color.white : new Color(0.55f, 0.55f, 0.6f, 0.55f);
+            if (ready) _mysteryLabel.text = "Gizemli Kutu!";
+            else
+            {
+                long left = Session.MysterySecondsLeft(now);
+                _mysteryLabel.text = (left / 3600).ToString("0") + ":" + (left % 3600 / 60).ToString("00") + ":" + (left % 60).ToString("00");
+            }
+        }
+
+        void TapMystery()
+        {
+            long now = DateTimeOffset.UtcNow.ToUnixTimeSeconds();
+            if (!Session.MysteryReady(now))
+            {
+                G.Toast("Gizemli kutu her 6 saatte bir gelir. Sıradaki: " + _mysteryLabel.text);
+                return;
+            }
+            var r = Session.OpenMystery(now);
+            if (r == null) return;
+            AudioFX.Play(Sfx.Chime);
+            Haptics.Bump();
+            FX.I.Burst(_objects, Theme.Gold, _mystery.anchoredPosition + Vector2.up * 120, 60, 900);
+            FX.I.Flash(G.Overlay, new Color(1f, 0.9f, 0.5f, 0.6f), 0.6f);
+            string els = string.Join(", ", r.Elements.Select(kv => kv.Value + " x " + AlchemyNames.Name(ElementDatabase.Get(kv.Key).Number) +
+                " (" + kv.Key + ")").ToArray());
+            var raw = RawMaterialDatabase.Get(r.RawId);
+            ResultPopup.Show(r.Rare ? "Nadir Hazine!" : "Gizemli Kutu", Theme.Gold,
+                "Kutunun içinden şunlar çıktı:\n\n<b>" + els + "</b>\n+1 " + raw.NameTr + "\n+" + r.Gold + " altın",
+                "Sıradaki kutu 6 saat sonra köye gelecek. Nadir elementler için 'Şans Tılsımı' yeteneği işe yarar.",
+                "+" + r.Xp + " XP", "Sorchemist'te gizemli kutudan " + els + " çıktı!",
+                () => { G.HandleLevelUps(r.LevelUps); Refresh(); }, Art.Has("mystery_box_2") ? "mystery_box_2" : null);
+            RefreshMystery();
         }
 
         // ---------- Etkileşimler ----------
@@ -408,6 +486,7 @@ namespace Sorchemist.UI
                 ApplyHouseState(kv.Value, State.GetHouse(kv.Key));
             }
             RefreshNodes();
+            RefreshMystery();
         }
 
         void ApplyHouseState(RectTransform house, HouseState st)
@@ -481,7 +560,7 @@ namespace Sorchemist.UI
         void Update()
         {
             _tick += Time.deltaTime;
-            if (_tick > 1f) { _tick = 0; RefreshNodes(); }
+            if (_tick > 1f) { _tick = 0; RefreshNodes(); RefreshMystery(); }
         }
     }
 }

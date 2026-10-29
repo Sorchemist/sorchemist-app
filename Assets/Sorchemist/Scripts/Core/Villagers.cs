@@ -174,6 +174,64 @@ namespace Sorchemist.Core
                 new[] { "sand" },
                 "Dükkânımın camı kırıldı, rüzgâr çörekleri soğutuyor.",
                 "Kumdan cam yapılır derler. Ama çok sıcak bir ateş gerekir!");
+
+            // ---- Köyün diğer 14 sakininin görevleri (24 köylünün hepsi görev verir) ----
+            Q("q_well", "sucu", 1, PotionEffect.Hydrate, 20, 15, "Kovalar yine dolu! Köyün suyu sana emanet.",
+                new[] { "dewcap" },
+                "Aqualf, kuyunun dibi göründü! Kovalarım boş kaldı.",
+                "Bir kova saf su yapabilir misin? İki hidrojen, bir oksijen... öyle demiştin.");
+            Q("q_hide", "derici", 2, PotionEffect.Preserve, 25, 20, "Deriler kokmuyor, çürümüyor. Harika!",
+                new[] { "seawater" },
+                "Yeni tabakladığım deriler bozulmaya başladı.",
+                "Tuz deriyi korur derler. Bana biraz tuz lazım.");
+            Q("q_bread", "asci", 2, PotionEffect.Fizz, 30, 25, "Hamur kabardı, çorba köpürdü! Mutfak bayram yeri.",
+                new[] { "limestone" },
+                "Ekmek hamurum kabarmıyor, gazozum da gazsız!",
+                "Kabarcık yapan o gazı getirebilir misin? Karbon ve oksijen, bir de biraz ısı.");
+            Q("q_flowers", "arici", 2, PotionEffect.Growth, 30, 25, "Çiçekler açtı, arılar vızıldıyor! Sana bir kavanoz bal.",
+                new[] { "guano" },
+                "Arılarımın çiçekleri soldu, bal azaldı.",
+                "Toprağı besleyecek bir gübre lazım. Azotlu bir şey...");
+            Q("q_wool", "dokumaci", 3, PotionEffect.Cleanse, 35, 30, "Yünler bembeyaz! Tezgâhım yeniden çalışıyor.",
+                new[] { "ash" },
+                "Yünler yağlı ve kirli, ipliğe dönüşmüyor.",
+                "Yağı söken o güçlü bazdan yapabilir misin?");
+            Q("q_razor", "berber", 3, PotionEffect.Disinfect, 35, 30, "Usturalar tertemiz! Müşterilerim artık rahat.",
+                new[] { "air" },
+                "Usturalarımı mikroplardan arındırmam gerek.",
+                "Köpüren, mikrop öldüren o sıvı... ama sakın ısıtma!");
+            Q("q_marble", "tasusta", 4, PotionEffect.Dissolve, 40, 35, "Taşlar parlıyor, pas izleri gitti!",
+                new[] { "limestone" },
+                "Heykelimin üstü pas ve kireç lekesiyle doldu.",
+                "Lekeleri çözecek bir asit lazım. Hidrojen ve klor, öyle diyorlar.");
+            Q("q_ember", "komurcu", 4, PotionEffect.Cool, 45, 40, "Ohh... elim serinledi. Teşekkürler simyacı!",
+                new[] { "ash" },
+                "Kömür ocağından bir kor sıçradı, elim yandı!",
+                "Isıyı emen serin bir kompres hazırlayabilir misin?");
+            Q("q_moths", "terzi", 4, PotionEffect.PestControl, 45, 40, "Güveler kaçtı! Kumaşlarım kurtuldu.",
+                new[] { "malachite" },
+                "Güveler kumaşlarımı delik deşik ediyor!",
+                "Böcekleri kaçıran o mavi kristalden yapabilir misin?");
+            Q("q_night", "balikci", 4, PotionEffect.Light, 50, 45, "Nehir gece gündüz gibi! Balıklar ışığa geldi.",
+                new[] { "magnesite" },
+                "Gece balığına çıkacağım ama fenerim söndü.",
+                "Göz kamaştıran beyaz bir ışık lazım bana.");
+            Q("q_beams", "marangoz", 5, PotionEffect.Build, 55, 50, "Çatı kirişleri taş gibi oturdu!",
+                new[] { "limestone", "sand" },
+                "Atölyemin temeli çatladı, kirişler oynuyor.",
+                "Harca katılan o beyaz taşı yapabilir misin?");
+            Q("q_campfire", "oduncu", 5, PotionEffect.Fuel, 55, 50, "Kamp ateşi isiz, mavi alevle yanıyor!",
+                new[] { "dewcap" },
+                "Ormanda gece kampı kuracağım, temiz yanan bir yakıt lazım.",
+                "Karbon, hidrojen ve biraz oksijen... mavi alevli o sıvı!");
+            Q("q_leather", "kunduraci", 5, PotionEffect.Pigment, 50, 45, "Çizmeler kıpkırmızı! Festivalde herkes bunları giyecek.",
+                new[] { "hematite" },
+                "Festival çizmelerini boyamam lazım ama boyam bitti.",
+                "Pasın kırmızısı tam istediğim renk!");
+            Q("q_glaze", "comlekci", 6, PotionEffect.Glass, 65, 55, "Çömleklerim cam gibi sırlandı!",
+                new[] { "sand" },
+                "Çömleklerimi sırlamak için cam tozu lazım.",
+                "Kumdan cam olur, ama çok sıcak bir ateşte!");
         }
     }
 

@@ -60,7 +60,12 @@ namespace Sorchemist.Game
             Show(ScreenId.Village);
             // Açılış ekranı (Art: bg_title). Yoksa doğrudan oyuna gir.
             bool newGame = _isNewGame;
-            if (!TitleScreen.Show(Overlay, () => { if (newGame) Intro(); }))
+            if (!TitleScreen.Show(Overlay, () =>
+                {
+                    if (newGame) Intro();
+                    else if (Session.MysteryReady(System.DateTimeOffset.UtcNow.ToUnixTimeSeconds()))
+                        Toast("Köye bir Gizemli Kutu geldi! Laboratuvarın yanında seni bekliyor.");
+                }))
                 if (_isNewGame) Invoke("Intro", 0.3f);
         }
 

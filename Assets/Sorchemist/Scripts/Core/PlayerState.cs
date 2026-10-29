@@ -39,6 +39,8 @@ namespace Sorchemist.Core
         public string ActiveQuestId;
         public bool SoundOn = true;
         public bool HapticsOn = true;
+        public long MysteryReadyAt;     // Gizemli kutunun açılabileceği zaman (unix sn). 0 = hemen
+        public int MysteryOpened;       // Kaç kutu açıldı
 
         public List<ItemStack> Elements = new List<ItemStack>();
         public List<ItemStack> Raw = new List<ItemStack>();

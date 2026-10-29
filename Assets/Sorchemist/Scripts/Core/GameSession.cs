@@ -19,6 +19,16 @@ namespace Sorchemist.Core
         public int LevelUps;
     }
 
+    public class MysteryReward
+    {
+        public int Gold;
+        public int Xp;
+        public Dictionary<string, int> Elements = new Dictionary<string, int>();
+        public string RawId;
+        public bool Rare;
+        public int LevelUps;
+    }
+
     public class GameSession
     {
         public PlayerState State { get; private set; }
@@ -146,6 +156,42 @@ namespace Sorchemist.Core
             if (o.Success) PickNextQuest();
             Notify();
             return rep;
+        }
+
+        // ---------- Gizemli kutu: her 6 saatte bir köye gelir ----------
+        public const long MysteryInterval = 6 * 3600;
+
+        public bool MysteryReady(long nowUnix) { return nowUnix >= State.MysteryReadyAt; }
+        public long MysterySecondsLeft(long nowUnix) { return Math.Max(0, State.MysteryReadyAt - nowUnix); }
+
+        static readonly string[] MysteryPool = { "Li", "B", "Ne", "Al", "Ar", "Ti", "Cr", "Co", "Ni", "Zn", "Ag", "Sn", "I", "W", "Pt", "Au", "Hg", "Xe" };
+
+        public MysteryReward OpenMystery(long nowUnix)
+        {
+            if (!MysteryReady(nowUnix)) return null;
+            var r = new MysteryReward();
+            bool luck = State.HasSkill(SkillDatabase.Luck);
+            r.Gold = 20 + _rng.Next(41);
+            r.Xp = 15;
+            int picks = 1 + (_rng.NextDouble() < (luck ? 0.6 : 0.35) ? 1 : 0);
+            for (int i = 0; i < picks; i++)
+            {
+                string sym = MysteryPool[_rng.Next(MysteryPool.Length)];
+                int cur; r.Elements.TryGetValue(sym, out cur);
+                r.Elements[sym] = cur + 1;
+                if (Array.IndexOf(RawMaterialDatabase.MysteryRare, sym) >= 0) r.Rare = true;
+            }
+            var raws = RawMaterialDatabase.All;
+            r.RawId = raws[_rng.Next(raws.Count)].Id;
+
+            State.Gold += r.Gold;
+            foreach (var kv in r.Elements) State.AddElement(kv.Key, kv.Value);
+            State.AddRaw(r.RawId, 1);
+            State.MysteryReadyAt = nowUnix + MysteryInterval;
+            State.MysteryOpened++;
+            r.LevelUps = State.AddXp(r.Xp);
+            Notify();
+            return r;
         }
 
         public bool UnlockSkill(string id)

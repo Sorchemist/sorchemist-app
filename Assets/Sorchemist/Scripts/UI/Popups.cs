@@ -75,11 +75,12 @@ namespace Sorchemist.UI
             // Yuvarlak pencerede görsel
             var hole = UIKit.InFrame(UIKit.Rect("Hole", card.transform), fs, 158, 145, 372, 359);
             var icon = Art.Get(iconKey);
-            if (icon != null && iconKey.StartsWith("fx_"))
+            if (icon != null && (iconKey.StartsWith("fx_") || iconKey.StartsWith("mystery")))
             {
                 var ic = Art.Image(hole, "Icon", icon);
                 UIKit.Stretch(ic.rectTransform, -30, -30, -30, -30);
-                ic.gameObject.AddComponent<Spinner>();
+                if (iconKey.StartsWith("fx_")) ic.gameObject.AddComponent<Spinner>();
+                else ic.gameObject.AddComponent<Bouncer>().Amplitude = 10;
             }
             else if (icon != null)
             {
@@ -101,7 +102,7 @@ namespace Sorchemist.UI
             var content = UIKit.InFrame(UIKit.Rect("TextArea", card.transform), fs, 440, 150, 1010, 612);
             var v = UIKit.VList(content, 12, 0); v.childForceExpandHeight = false;
             if (!string.IsNullOrEmpty(badge))
-                UIKit.LE(UIKit.Txt(content, "Badge", badge, 30, Color.Lerp(titleColor, Color.black, 0.35f), TextAnchor.MiddleLeft, FontStyle.Bold), 44);
+                UIKit.LE(UIKit.Txt(content, "Badge", badge, 30, Color.Lerp(titleColor, Color.black, 0.6f), TextAnchor.MiddleLeft, FontStyle.Bold), 44);
             UIKit.LE(UIKit.Txt(content, "Body", body, 30, UIKit.WoodText, TextAnchor.UpperLeft), 190);
             if (!string.IsNullOrEmpty(science))
             {

@@ -37,6 +37,14 @@ namespace Sorchemist.UI
                 var col = ResultPopup.RarityColor(f.Rarity);
                 var card = UIKit.Btn(_grid, "F_" + f.Id, "", unlocked ? Theme.Panel : UIKit.Hex("#1F1936"),
                     () => { if (unlocked) Open(entry); else G.Toast("Bu başarısızlığı henüz yaşamadın. Deney yapmaya devam!"); }, 30);
+                var cardArt = Art.Sliced("card_parchment", new Vector4(50, 50, 50, 50));
+                if (cardArt != null)
+                {
+                    var ci = card.GetComponent<Image>();
+                    ci.sprite = cardArt; ci.type = Image.Type.Sliced; ci.pixelsPerUnitMultiplier = 1.2f;
+                    ci.color = unlocked ? Color.white : new Color(0.55f, 0.52f, 0.5f, 1f);
+                    UIKit.LabelOf(card).color = UIKit.WoodText;
+                }
                 var outline = card.gameObject.AddComponent<Outline>();
                 outline.effectColor = unlocked ? col : new Color(col.r, col.g, col.b, 0.3f);
                 outline.effectDistance = new Vector2(4, -4);

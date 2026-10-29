@@ -123,6 +123,7 @@ namespace Sorchemist.UI
                 var fit = bg.gameObject.AddComponent<AspectRatioFitter>();
                 fit.aspectMode = AspectRatioFitter.AspectMode.EnvelopeParent;
                 fit.aspectRatio = bgArt.rect.width / bgArt.rect.height;
+                bg.rectTransform.pivot = new Vector2(0, 0.5f);   // sol taraf (raflar, masa) görünsün; kazanı biz çiziyoruz
                 var shade = UIKit.Img(_scene, "Shade", new Color(0.08f, 0.05f, 0.15f, 0.35f));
                 UIKit.Stretch(shade.rectTransform);
                 shade.raycastTarget = false;
