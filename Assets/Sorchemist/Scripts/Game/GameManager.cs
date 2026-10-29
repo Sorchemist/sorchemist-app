@@ -63,7 +63,7 @@ namespace Sorchemist.Game
             if (!TitleScreen.Show(Overlay, () =>
                 {
                     if (newGame) Intro();
-                    else if (Session.MysteryReady(System.DateTimeOffset.UtcNow.ToUnixTimeSeconds()))
+                    else if (Session.MysteryReady(Now))
                         Toast("Köye bir Gizemli Kutu geldi! Laboratuvarın yanında seni bekliyor.");
                 }))
                 if (_isNewGame) Invoke("Intro", 0.3f);
@@ -154,10 +154,7 @@ namespace Sorchemist.Game
         public void RefreshCurrent() { _screens[Current].Refresh(); if (_hud != null) _hud.Refresh(); }
 
         // ---------- Ortak yardımcılar ----------
-        public float MinigameTime(float baseSeconds)
-        {
-            return State.HasSkill(SkillDatabase.TimeBend) ? baseSeconds * 0.7f : baseSeconds;
-        }
+        public static long Now { get { return System.DateTimeOffset.UtcNow.ToUnixTimeSeconds(); } }
 
         public void Toast(string msg) { Toaster.Show(Overlay, msg); }
 
@@ -171,7 +168,7 @@ namespace Sorchemist.Game
             if (ups <= 0) return;
             AudioFX.Play(Sfx.LevelUp);
             FX.I.CrystalRain(Overlay, Theme.Gold, 40);
-            Toast("Seviye " + State.Level + "! +" + ups + " yetenek puanı. Yetenek ağacına göz at!");
+            Toast("Seviye " + State.Level + "! Aqualf'in ünü köyde yayılıyor.");
         }
 
         void Intro()
@@ -180,15 +177,36 @@ namespace Sorchemist.Game
             {
                 "Hoş geldin! Ben Aqualf, Fındıkdere köyünün tek simyacısıyım.",
                 "Köylüler dertlerini kapıma getirir, ben de onlara iksir hazırlarım.",
-                "Ama sihrin sırrı kimyadır: ham maddeleri laboratuvarda elementlere ayır. Yenilerini görevlerden ve 6 saatte bir gelen Gizemli Kutu'dan kazanırsın...",
-                "...sonra doğru atomları doğru ısıda kazana at. Yanlış olursa? Eh... Fail-Dex'e bir sayfa daha!",
-                "Hadi, kapıda biri var gibi. Haritadaki ünlem işaretine dokun!"
+                "Ama sihrin sırrı kimyadır: ham maddeleri laboratuvarda elementlere ayır, doğru atomları kazana at ve iksirin demlenmesini bekle.",
+                "Köydeki her evin bir seviyesi var. Evleri yükselttikçe yeni deneyler açılır, köy büyür. Ama dikkat: üst seviyeler günler sürer!",
+                "Oyunda kaldıkça altın ve Bilgi Puanı biriktirirsin. Bilgiyle kulemdeki yuvalara pasif özellikler takabilirsin.",
+                "Yanlış karışım mı? Eh... Fail-Dex'e bir sayfa daha! Hadi, haritada gezin ve ünlem işaretli evi bul!"
             }, null);
         }
 
         // ---------- Kayıt ----------
+        float _tickTimer;
+
         void Update()
         {
+            if (Session != null)
+            {
+                // Çevrimiçi gelir: yalnızca oyun açıkken akar
+                _tickTimer += Time.unscaledDeltaTime;
+                if (_tickTimer >= 1f)
+                {
+                    float dt = _tickTimer; _tickTimer = 0;
+                    HandleLevelUps(Session.TickOnline(dt));
+                    var done = Session.CompleteUpgrades(Now);
+                    foreach (var id in done)
+                    {
+                        AudioFX.Play(Sfx.LevelUp, 0.7f);
+                        if (FX.I != null) FX.I.CrystalRain(Overlay, Theme.Gold, 25);
+                        Toast(BuildingDatabase.NameTr(id) + " Sv." + State.BuildingLevel(id) + " oldu!");
+                    }
+                    if (_screens.ContainsKey(Current)) _screens[Current].Tick();
+                }
+            }
             _saveTimer += Time.unscaledDeltaTime;
             if (_dirty && _saveTimer > 5f) SaveNow();
         }

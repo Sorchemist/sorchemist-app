@@ -1,4 +1,6 @@
-// Bilim ve Büyü yetenek ağacı.
+// Pasif özellikler ekranı (eski "Yetenek" sekmesi).
+// Bilgi Puanı ile pasif açılır, Aqualf'in Kulesi'nin seviyesine göre açılan yuvalara takılır.
+// Yalnızca yuvadaki pasifler etki eder.
 using Sorchemist.Core;
 using Sorchemist.Game;
 using UnityEngine;
@@ -8,77 +10,135 @@ namespace Sorchemist.UI
 {
     public class SkillScreen : GameScreen
     {
-        RectTransform _sci, _mag;
+        const int MaxSlots = 5;
         Text _header;
+        RectTransform _slots, _list;
 
         public override void Build()
         {
-            _header = UIKit.Txt(Root, "Header", "", 44, Theme.Gold, TextAnchor.MiddleCenter, FontStyle.Bold);
-            UIKit.Place(_header.rectTransform, new Vector2(0.5f, 1), new Vector2(0, -70), new Vector2(1000, 120));
+            _header = UIKit.Txt(Root, "Header", "", 40, Theme.Gold, TextAnchor.MiddleCenter, FontStyle.Bold);
+            UIKit.Place(_header.rectTransform, new Vector2(0.5f, 1), new Vector2(0, -55), new Vector2(1500, 100));
 
-            var cols = UIKit.Rect("Columns", Root);
-            UIKit.Stretch(cols, 16, 150, 16, 10);
-            UIKit.HList(cols, 16);
-            _sci = Column(cols, "BİLİM", Theme.Accent);
-            _mag = Column(cols, "BÜYÜ", Theme.Magic);
-        }
+            _slots = UIKit.Rect("Slots", Root);
+            _slots.anchorMin = new Vector2(0, 1); _slots.anchorMax = new Vector2(1, 1); _slots.pivot = new Vector2(0.5f, 1);
+            _slots.offsetMin = new Vector2(30, -290); _slots.offsetMax = new Vector2(-30, -115);
+            var h = UIKit.HList(_slots, 18);
+            h.childForceExpandWidth = true;
 
-        RectTransform Column(RectTransform parent, string title, Color color)
-        {
-            var col = UIKit.Panel(parent, title, Theme.Panel);
-            var t = UIKit.Txt(col.transform, "Title", title, 44, color, TextAnchor.MiddleCenter, FontStyle.Bold);
-            UIKit.Place(t.rectTransform, new Vector2(0.5f, 1), new Vector2(0, -50), new Vector2(480, 80));
+            var panel = UIKit.Panel(Root, "ListPanel", Theme.Panel);
+            UIKit.Stretch(panel.rectTransform, 16, 305, 16, 10);
             RectTransform content;
-            var sr = UIKit.Scroll(col.transform, "Scroll", true, false, out content);
-            UIKit.Stretch((RectTransform)sr.transform, 0, 100, 0, 0);
-            UIKit.VList(content, 14, 14);
-            return content;
+            var sr = UIKit.Scroll(panel.transform, "Scroll", true, false, out content);
+            UIKit.Stretch((RectTransform)sr.transform, 0, 0, 0, 0);
+            var grid = content.gameObject.AddComponent<GridLayoutGroup>();
+            grid.cellSize = new Vector2(780, 230);
+            grid.spacing = new Vector2(18, 18);
+            grid.padding = new RectOffset(18, 18, 18, 18);
+            grid.constraint = GridLayoutGroup.Constraint.FixedColumnCount;
+            grid.constraintCount = 2;
+            var fit = content.gameObject.GetComponent<ContentSizeFitter>();
+            if (fit != null) fit.verticalFit = ContentSizeFitter.FitMode.PreferredSize;
+            _list = content;
         }
 
         public override void Refresh()
         {
-            _header.text = "Yetenek puanı: " + State.SkillPoints +
-                           "\n<size=28><color=#A99FC9>Her seviye atlayışında 1 puan kazanırsın.</color></size>";
-            UIKit.Clear(_sci); UIKit.Clear(_mag);
-            foreach (var s in SkillDatabase.All)
+            _header.text = "Bilgi Puanı: " + State.Knowledge +
+                "   <size=26><color=#A99FC9>(dakikada +" + Session.KnowledgePerMinute.ToString("0.#") +
+                " · yeni element, iksir ve Fail-Dex sayfaları da Bilgi verir)</color></size>";
+
+            // ----- Yuvalar -----
+            UIKit.Clear(_slots);
+            for (int i = 0; i < MaxSlots; i++)
             {
-                var skill = s;
-                bool has = State.HasSkill(s.Id);
-                string why = State.CanUnlock(s.Id);
-                bool can = why == null;
-                Color bg = has ? (s.Branch == SkillBranch.Science ? Theme.Accent * 0.55f + Color.black * 0.45f : Theme.Magic * 0.55f + Color.black * 0.45f)
-                                : can ? Theme.PanelLight : UIKit.Hex("#1F1936");
-                bool parch = Art.Has("card_parchment");
-                string status = has ? "<color=" + (parch ? "#1E6B3A" : "#7CF2C8") + ">AÇIK</color>"
-                    : can ? "<color=" + (parch ? "#9A5B00" : "#FFD166") + ">Aç: " + s.Cost + " puan</color>"
-                    : "<color=" + (parch ? "#6B5A4A" : "#A99FC9") + ">" + why + "</color>";
-                var b = UIKit.Btn(s.Branch == SkillBranch.Science ? _sci : _mag, s.Id,
-                    "<b>" + s.NameTr + "</b>\n<size=24>" + s.DescriptionTr + "</size>\n<size=26>" + status + "</size>", bg, () =>
-                    {
-                        if (Session.UnlockSkill(skill.Id))
-                        {
-                            AudioFX.Play(Sfx.LevelUp, 0.8f);
-                            FX.I.Burst(G.Overlay, skill.Branch == SkillBranch.Science ? Theme.Accent : Theme.Magic, Vector2.zero, 40, 900);
-                            Refresh();
-                        }
-                        else if (!State.HasSkill(skill.Id)) G.Toast(State.CanUnlock(skill.Id));
-                    }, 32);
+                bool open = i < State.PassiveSlots;
+                string id = i < State.EquippedPassives.Count ? State.EquippedPassives[i] : null;
+                var p = id != null ? PassiveDatabase.Get(id) : null;
+                string label;
+                Color bg;
+                if (!open)
+                {
+                    int need = 1; while (BuildingDatabase.PassiveSlots(need) <= i) need++;
+                    label = "<size=24><color=#4A3420>Kilitli yuva\nKule Sv." + need + "</color></size>";
+                    bg = UIKit.Hex("#1F1936");
+                }
+                else if (p != null) { label = "<b>" + p.NameTr + "</b>\n<size=22>Çıkarmak için dokun</size>"; bg = Theme.Magic; }
+                else { label = "<size=26>Boş yuva</size>\n<size=20>Aşağıdan bir pasif tak</size>"; bg = Theme.PanelLight; }
+                var b = UIKit.Btn(_slots, "Slot" + i, label, bg, () =>
+                {
+                    if (p == null) return;
+                    Session.Unequip(p.Id);
+                    AudioFX.Play(Sfx.Click);
+                    Refresh();
+                }, 26);
+                UIKit.Wood(b);
+                if (p != null && Art.Has(p.Icon))
+                {
+                    var ic = Art.Image(b.transform, "Icon", Art.Get(p.Icon));
+                    UIKit.Place(ic.rectTransform, new Vector2(0, 0.5f), new Vector2(14, 0), new Vector2(70, 70), new Vector2(0, 0.5f));
+                    ic.raycastTarget = false;
+                }
+            }
+
+            // ----- Pasif listesi -----
+            UIKit.Clear(_list);
+            bool parch = Art.Has("card_parchment");
+            foreach (var pd in PassiveDatabase.All)
+            {
+                var p = pd;
+                bool owned = State.OwnedPassives.Contains(p.Id);
+                bool equipped = State.HasPassive(p.Id);
+                string why = owned ? null : Session.CanBuyPassive(p.Id);
+                string status = equipped ? "<color=#1E8A4A>TAKILI</color>"
+                    : owned ? "<color=#2A6FB0>Sende · takmak için dokun</color>"
+                    : why == null ? "<color=#9A5B00>Aç: " + p.Cost + " Bilgi</color>"
+                    : "<color=#6B5A4A>" + p.Cost + " Bilgi gerekli</color>";
+                if (!parch) status = status.Replace("#1E8A4A", "#7CF2C8").Replace("#2A6FB0", "#9EE6FF").Replace("#9A5B00", "#FFD166").Replace("#6B5A4A", "#A99FC9");
+                var card = UIKit.Btn(_list, p.Id,
+                    "<b>" + p.NameTr + "</b>\n<size=24>" + p.DescriptionTr + "</size>\n<size=26>" + status + "</size>",
+                    equipped ? Theme.Magic : Theme.PanelLight, () => OnCard(p), 30);
+                var label = UIKit.LabelOf(card);
+                label.alignment = TextAnchor.MiddleLeft;
+                label.rectTransform.offsetMin = new Vector2(130, label.rectTransform.offsetMin.y);
                 if (parch)
                 {
-                    var bi = b.GetComponent<Image>();
+                    var bi = card.GetComponent<Image>();
                     bi.sprite = Art.Sliced("card_parchment", new Vector4(50, 50, 50, 50)); bi.type = Image.Type.Sliced;
                     bi.pixelsPerUnitMultiplier = 1.2f;
-                    bi.color = has ? Color.white : can ? new Color(0.92f, 0.92f, 0.85f) : new Color(0.6f, 0.58f, 0.55f);
-                    UIKit.LabelOf(b).color = UIKit.WoodText;
-                    if (!has && !can && Art.Has("icon_lock"))
-                    {
-                        var lk = Art.Image(b.transform, "Lock", Art.Get("icon_lock"));
-                        UIKit.Place(lk.rectTransform, new Vector2(1, 1), new Vector2(-30, -30), new Vector2(46, 58));
-                        lk.raycastTarget = false;
-                    }
+                    bi.color = equipped ? new Color(0.85f, 1f, 0.88f) : owned || why == null ? Color.white : new Color(0.65f, 0.62f, 0.58f);
+                    label.color = UIKit.WoodText;
                 }
-                UIKit.LE(b, 250);
+                if (Art.Has(p.Icon))
+                {
+                    var ic = Art.Image(card.transform, "Icon", Art.Get(p.Icon));
+                    UIKit.Place(ic.rectTransform, new Vector2(0, 0.5f), new Vector2(24, 0), new Vector2(96, 96), new Vector2(0, 0.5f));
+                    ic.raycastTarget = false;
+                }
+                if (!owned && why != null && Art.Has("icon_lock"))
+                {
+                    var lk = Art.Image(card.transform, "Lock", Art.Get("icon_lock"));
+                    UIKit.Place(lk.rectTransform, new Vector2(1, 1), new Vector2(-30, -30), new Vector2(46, 58));
+                    lk.raycastTarget = false;
+                }
             }
+        }
+
+        void OnCard(PassiveData p)
+        {
+            if (State.HasPassive(p.Id)) { Session.Unequip(p.Id); AudioFX.Play(Sfx.Click); Refresh(); return; }
+            if (State.OwnedPassives.Contains(p.Id))
+            {
+                string err = Session.Equip(p.Id);
+                if (err != null) G.Toast(err); else { AudioFX.Play(Sfx.Chime, 0.7f); Refresh(); }
+                return;
+            }
+            string why = Session.CanBuyPassive(p.Id);
+            if (why != null) { G.Toast(why); return; }
+            Session.BuyPassive(p.Id);
+            AudioFX.Play(Sfx.LevelUp, 0.8f);
+            if (FX.I != null) FX.I.Burst(G.Overlay, Theme.Magic, Vector2.zero, 40, 900);
+            G.Toast(p.NameTr + " açıldı!" + (State.HasPassive(p.Id) ? " Yuvaya takıldı." : " Boş yuva yok, bir pasifi çıkarıp takabilirsin."));
+            Refresh();
         }
     }
 }

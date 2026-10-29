@@ -42,12 +42,22 @@ namespace Sorchemist.Core
         public long MysteryReadyAt;     // Gizemli kutunun açılabileceği zaman (unix sn). 0 = hemen
         public int MysteryOpened;       // Kaç kutu açıldı
 
+        // ---- Bina / zaman tabanlı ilerleme ----
+        public int Knowledge;           // Bilgi Puanı (pasif özellik açmak için)
+        public float GoldAcc, KnowledgeAcc, XpAcc;   // Çevrimiçi gelir birikimi (küsuratlar)
+        public string BrewingId;        // Kazanda demlenen bileşik (yoksa boş)
+        public long BrewReadyAt;        // Demlemenin biteceği zaman
+        public List<BuildingEntry> Buildings = new List<BuildingEntry>();
+        public List<string> OwnedPassives = new List<string>();
+        public List<string> EquippedPassives = new List<string>();
+        public List<string> KnownElements = new List<string>();   // En az bir kez elde edilmiş elementler
+
         public List<ItemStack> Elements = new List<ItemStack>();
         public List<ItemStack> Raw = new List<ItemStack>();
         public List<ItemStack> Potions = new List<ItemStack>();
         public List<string> Discovered = new List<string>();
         public List<string> FailDex = new List<string>();
-        public List<string> Skills = new List<string>();
+        public List<string> Skills = new List<string>();          // (eski sürüm, kullanılmıyor)
         public List<string> CompletedQuests = new List<string>();
         public List<HouseEntry> Houses = new List<HouseEntry>();
         public List<NodeEntry> Nodes = new List<NodeEntry>();
@@ -100,17 +110,30 @@ namespace Sorchemist.Core
         }
 
         // ---------- İlerleme ----------
-        public bool HasSkill(string id) { return Skills.Contains(id); }
+        public bool HasPassive(string id) { return EquippedPassives.Contains(id); }
+
+        public BuildingEntry Building(string id)
+        {
+            var b = Buildings.Find(x => x.Id == id);
+            if (b == null) { b = new BuildingEntry { Id = id, Level = 1 }; Buildings.Add(b); }
+            return b;
+        }
+
+        public int BuildingLevel(string id) { return Building(id).Level; }
+        public int TowerLevel { get { return BuildingLevel(BuildingDatabase.Tower); } }
 
         public int CauldronCapacity
         {
-            get
-            {
-                int c = 6;
-                if (HasSkill(SkillDatabase.PreciseScale)) c += 3;
-                if (HasSkill(SkillDatabase.BigCauldron)) c += 3;
-                return c;
-            }
+            get { return BuildingDatabase.CauldronCapacity(TowerLevel) + (HasPassive(PassiveDatabase.CopperPot) ? 2 : 0); }
+        }
+
+        public int PassiveSlots { get { return BuildingDatabase.PassiveSlots(TowerLevel); } }
+        public int Builders { get { return BuildingDatabase.Builders(TowerLevel); } }
+
+        public bool IsUnlocked(string compoundId)
+        {
+            var u = BuildingDatabase.UnlockFor(compoundId);
+            return u == null || BuildingLevel(u.BuildingId) >= u.Level;
         }
 
         public static int XpToNext(int level) { return 40 + level * 30; }
@@ -124,29 +147,9 @@ namespace Sorchemist.Core
             {
                 Xp -= XpToNext(Level);
                 Level++;
-                SkillPoints++;
                 ups++;
             }
             return ups;
-        }
-
-        public string CanUnlock(string skillId)
-        {
-            var s = SkillDatabase.Get(skillId);
-            if (s == null) return "Bilinmeyen yetenek";
-            if (HasSkill(skillId)) return "Zaten açık";
-            if (s.Requires != null && !HasSkill(s.Requires))
-                return "Önce: " + SkillDatabase.Get(s.Requires).NameTr;
-            if (SkillPoints < s.Cost) return "Yetersiz yetenek puanı";
-            return null; // açılabilir
-        }
-
-        public bool Unlock(string skillId)
-        {
-            if (CanUnlock(skillId) != null) return false;
-            SkillPoints -= SkillDatabase.Get(skillId).Cost;
-            Skills.Add(skillId);
-            return true;
         }
 
         public HouseState GetHouse(string villagerId)

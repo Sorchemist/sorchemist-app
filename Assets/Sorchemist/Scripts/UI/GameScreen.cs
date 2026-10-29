@@ -15,5 +15,7 @@ namespace Sorchemist.UI
         public abstract void Build();
         public virtual void Refresh() { }
         public virtual void OnShow() { Refresh(); }
+        /// <summary>Ekran açıkken saniyede bir çağrılır (geri sayımlar için).</summary>
+        public virtual void Tick() { }
     }
 }

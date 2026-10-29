@@ -1,14 +1,24 @@
 // Oyunun tüm kurallarını tek yerde toplayan sınıf. Unity arayüzü sadece bunu çağırır.
+//
+// Oyun kuramı:
+//  - Puan (altın, Bilgi Puanı, XP) yalnızca zamanla ve OYUN AÇIKKEN kazanılır (TickOnline) +
+//    elementler ve bileşikler hakkında bilgi biriktikçe (ilk kez elde edilen element / keşfedilen bileşik).
+//  - Bina yükseltmeleri ve iksir demleme gerçek zamanlıdır (oyun kapalıyken de sürer).
+//  - Binaların seviyesi yükseldikçe yeni deneyler (bileşikler) açılır, köy gelişir.
 using System;
 using System.Collections.Generic;
+using System.Linq;
 
 namespace Sorchemist.Core
 {
     public class BrewReport
     {
         public BrewResult Result;
+        public bool Started;        // Demleme başladı (doğru ve açık tarif)
+        public bool Locked;         // Tarif doğru ama deney henüz açılmamış
         public bool NewDiscovery;   // İlk kez keşfedilen bileşik
         public bool NewFail;        // Fail-Dex'e yeni giriş
+        public int Knowledge;       // Kazanılan Bilgi Puanı
         public int LevelUps;
     }
 
@@ -23,6 +33,7 @@ namespace Sorchemist.Core
     {
         public int Gold;
         public int Xp;
+        public int Knowledge;
         public Dictionary<string, int> Elements = new Dictionary<string, int>();
         public string RawId;
         public bool Rare;
@@ -36,11 +47,19 @@ namespace Sorchemist.Core
 
         public event Action Changed;
 
+        // Bilgi Puanı ödülleri
+        public const int KnowledgeNewElement = 5;
+        public const int KnowledgeNewCompound = 20;
+        public const int KnowledgeNewFail = 5;
+
         public GameSession(PlayerState state, int seed = 0)
         {
             State = state ?? PlayerState.NewGame();
             _rng = seed == 0 ? new Random() : new Random(seed);
             if (string.IsNullOrEmpty(State.ActiveQuestId)) PickNextQuest();
+            foreach (var id in BuildingDatabase.AllIds) State.Building(id);   // eksik binaları oluştur
+            // Eski kayıtlardaki elementleri "bilinen" say
+            foreach (var e in State.Elements) if (!State.KnownElements.Contains(e.Id)) State.KnownElements.Add(e.Id);
         }
 
         private void Notify() { if (Changed != null) Changed(); }
@@ -53,74 +72,194 @@ namespace Sorchemist.Core
             State.ActiveQuestId = q != null ? q.Id : null;
         }
 
-        // ---------- Harita: toplama ----------
-        public bool CanCollect(string rawId, long nowUnix) { return nowUnix >= State.NodeReadyAt(rawId); }
-
-        public bool Collect(string rawId, long nowUnix)
+        // =====================================================================
+        // Çevrimiçi gelir
+        // =====================================================================
+        public float GoldPerMinute
         {
-            var raw = RawMaterialDatabase.Get(rawId);
-            if (raw == null || !CanCollect(rawId, nowUnix)) return false;
-            State.AddRaw(rawId, 1);
-            State.SetNodeReadyAt(rawId, nowUnix + (long)raw.RegrowSeconds);
+            get
+            {
+                float g = 0;
+                foreach (var b in State.Buildings) g += BuildingDatabase.GoldPerMinute(b.Id, b.Level);
+                return g * (State.HasPassive(PassiveDatabase.GoldPurse) ? 1.25f : 1f);
+            }
+        }
+
+        /// <summary>Bilgi birikimi: bilinen element ve keşfedilen bileşik sayısıyla büyür.</summary>
+        public float KnowledgePerMinute
+        {
+            get
+            {
+                float k = 1f + State.KnownElements.Count * 0.1f + State.Discovered.Count * 0.5f + State.TowerLevel * 0.25f;
+                return k * (State.HasPassive(PassiveDatabase.Owl) ? 1.25f : 1f);
+            }
+        }
+
+        public float XpPerMinute { get { return 1f + State.Discovered.Count * 0.2f; } }
+
+        /// <summary>Oyun açıkken her karede/saniyede çağrılır. Seviye atlama sayısını döndürür.</summary>
+        public int TickOnline(float seconds)
+        {
+            if (seconds <= 0) return 0;
+            seconds = Math.Min(seconds, 5f);   // takılma/arka plan dönüşünde büyük sıçramaları engelle
+            float m = seconds / 60f;
+            State.GoldAcc += GoldPerMinute * m;
+            State.KnowledgeAcc += KnowledgePerMinute * m;
+            State.XpAcc += XpPerMinute * m;
+            int g = (int)State.GoldAcc, k = (int)State.KnowledgeAcc, x = (int)State.XpAcc;
+            State.GoldAcc -= g; State.KnowledgeAcc -= k; State.XpAcc -= x;
+            State.Gold += g; State.Knowledge += k;
+            int ups = x > 0 ? State.AddXp(x) : 0;
+            if (g > 0 || k > 0 || x > 0) Notify();
+            return ups;
+        }
+
+        // =====================================================================
+        // Binalar
+        // =====================================================================
+        public int ActiveUpgrades { get { return State.Buildings.Count(b => b.UpgradeEndsAt > 0); } }
+
+        public long UpgradeDuration(string id)
+        {
+            long s = BuildingDatabase.UpgradeSeconds(State.BuildingLevel(id));
+            return State.HasPassive(PassiveDatabase.Builder) ? (long)(s * 0.85) : s;
+        }
+
+        /// <summary>Yükseltme başlatılamıyorsa nedenini, başlatılabiliyorsa null döndürür.</summary>
+        public string CanUpgrade(string id)
+        {
+            var b = State.Building(id);
+            if (b.Level >= BuildingDatabase.MaxLevel) return "En yüksek seviyede";
+            if (b.UpgradeEndsAt > 0) return "Zaten yükseltiliyor";
+            if (ActiveUpgrades >= State.Builders) return "Bütün ustalar meşgul (" + State.Builders + " usta)";
+            if (id != BuildingDatabase.Tower && b.Level >= State.TowerLevel + 2)
+                return "Önce Aqualf'in Kulesi'ni Sv." + (b.Level - 1) + " yap";
+            int cost = BuildingDatabase.UpgradeCost(id, b.Level);
+            if (State.Gold < cost) return "Yetersiz altın (" + cost + " gerekli)";
+            return null;
+        }
+
+        public bool StartUpgrade(string id, long nowUnix)
+        {
+            if (CanUpgrade(id) != null) return false;
+            var b = State.Building(id);
+            State.Gold -= BuildingDatabase.UpgradeCost(id, b.Level);
+            b.UpgradeEndsAt = nowUnix + UpgradeDuration(id);
             Notify();
             return true;
         }
 
-        // ---------- Laboratuvar: ayrıştırma ----------
-        public Dictionary<string, int> Extract(string rawId, float quality)
+        /// <summary>Süresi dolan yükseltmeleri tamamlar ve tamamlanan binaların listesini döndürür.</summary>
+        public List<string> CompleteUpgrades(long nowUnix)
+        {
+            var done = new List<string>();
+            foreach (var b in State.Buildings)
+            {
+                if (b.UpgradeEndsAt > 0 && nowUnix >= b.UpgradeEndsAt)
+                {
+                    b.Level = Math.Min(BuildingDatabase.MaxLevel, b.Level + 1);
+                    b.UpgradeEndsAt = 0;
+                    State.AddXp(10 * b.Level);
+                    State.Knowledge += 2 * b.Level;
+                    done.Add(b.Id);
+                }
+            }
+            if (done.Count > 0) Notify();
+            return done;
+        }
+
+        public long UpgradeSecondsLeft(string id, long nowUnix)
+        {
+            var b = State.Building(id);
+            return b.UpgradeEndsAt > 0 ? Math.Max(0, b.UpgradeEndsAt - nowUnix) : 0;
+        }
+
+        // =====================================================================
+        // Laboratuvar: ayrıştırma (anında, tıklama yok)
+        // =====================================================================
+        public const float ExtractQuality = 0.75f;
+
+        public Dictionary<string, int> Extract(string rawId)
         {
             var raw = RawMaterialDatabase.Get(rawId);
             if (raw == null || State.RawCount(rawId) <= 0) return null;
             State.AddRaw(rawId, -1);
-            int bonus = State.HasSkill(SkillDatabase.Column) ? 1 : 0;
-            var got = Extractor.Extract(raw, quality, bonus, State.HasSkill(SkillDatabase.Luck), _rng);
-            foreach (var kv in got) State.AddElement(kv.Key, kv.Value);
+            int bonus = State.HasPassive(PassiveDatabase.Column) ? 1 : 0;
+            var got = Extractor.Extract(raw, ExtractQuality, bonus, State.HasPassive(PassiveDatabase.Luck), _rng);
+            foreach (var kv in got) GainElement(kv.Key, kv.Value);
             State.AddXp(2);
             Notify();
             return got;
         }
 
-        // ---------- Laboratuvar: iksir yapımı ----------
-        public BrewReport Brew(Dictionary<string, int> atoms, HeatLevel heat, float stirQuality)
+        /// <summary>Element ekler; ilk kez elde ediliyorsa Bilgi Puanı verir.</summary>
+        public int GainElement(string sym, int n)
+        {
+            State.AddElement(sym, n);
+            if (State.KnownElements.Contains(sym)) return 0;
+            State.KnownElements.Add(sym);
+            State.Knowledge += KnowledgeNewElement;
+            return KnowledgeNewElement;
+        }
+
+        // =====================================================================
+        // Laboratuvar: iksir yapımı (zamanla demlenir, tıklama yok)
+        // =====================================================================
+        public bool IsBrewing { get { return !string.IsNullOrEmpty(State.BrewingId); } }
+        public bool BrewDone(long nowUnix) { return IsBrewing && nowUnix >= State.BrewReadyAt; }
+        public long BrewSecondsLeft(long nowUnix) { return IsBrewing ? Math.Max(0, State.BrewReadyAt - nowUnix) : 0; }
+
+        public long BrewDuration(CompoundData c)
+        {
+            long s = 8L * c.AtomCount;   // atom başına 8 saniye
+            return State.HasPassive(PassiveDatabase.PatientPot) ? (long)(s * 0.7) : s;
+        }
+
+        /// <summary>Kazana konan atomları dener. Doğru ve açık tarif: demleme başlar.
+        /// Yanlış karışım: anında Fail-Dex sonucu (malzemeler harcanır). Kilitli tarif: hiçbir şey harcanmaz.</summary>
+        public BrewReport StartBrew(Dictionary<string, int> atoms, long nowUnix)
         {
             var report = new BrewReport();
-            if (!State.HasElements(atoms))
+            if (IsBrewing) { report.Result = new BrewResult { MessageTr = "Kazan zaten dolu! Önce demlenen iksiri topla." }; return report; }
+            if (!State.HasElements(atoms)) { report.Result = new BrewResult { MessageTr = "Bu kadar elementin yok!" }; return report; }
+            if (atoms.Values.Sum() == 0) { report.Result = new BrewResult { MessageTr = "Kazan boş." }; return report; }
+
+            var known = CompoundDatabase.FindByAtoms(atoms);
+            if (known != null && atoms.Values.Sum() <= State.CauldronCapacity)
             {
-                report.Result = new BrewResult { MessageTr = "Bu kadar elementin yok!" };
+                if (!State.IsUnlocked(known.Id))
+                {
+                    var u = BuildingDatabase.UnlockFor(known.Id);
+                    report.Locked = true;
+                    report.Result = new BrewResult
+                    {
+                        MessageTr = "Bu deneyin kilidi kapalı: " + BuildingDatabase.NameTr(u.BuildingId) + " Sv." + u.Level + " olmalı."
+                    };
+                    return report;
+                }
+                State.ConsumeElements(atoms);
+                State.BrewingId = known.Id;
+                State.BrewReadyAt = nowUnix + BrewDuration(known);
+                report.Started = true;
+                report.Result = new BrewResult { Success = true, Compound = known, MessageTr = known.NameTr + " demleniyor..." };
+                Notify();
                 return report;
             }
 
-            var input = new BrewInput
+            // Bilinmeyen / yanlış oranlı karışım: komik başarısızlık
+            var r = ReactionEngine.Brew(new BrewInput
             {
-                Atoms = new Dictionary<string, int>(atoms),
-                Heat = heat,
-                StirQuality = stirQuality,
-                CauldronCapacity = State.CauldronCapacity,
-                PatienceSpell = State.HasSkill(SkillDatabase.Patience)
-            };
-            var r = ReactionEngine.Brew(input);
+                Atoms = new Dictionary<string, int>(atoms), Heat = HeatLevel.Warm, StirQuality = 1f,
+                CauldronCapacity = State.CauldronCapacity
+            });
             report.Result = r;
-
-            bool empty = true;
-            foreach (var kv in atoms) if (kv.Value > 0) empty = false;
-            if (empty) return report;
-
-            State.ConsumeElements(atoms); // Başarısızlıkta da malzemeler harcanır
-
-            if (r.Success)
-            {
-                State.AddPotion(r.Compound.Id, 1);
-                if (!State.Discovered.Contains(r.Compound.Id))
-                {
-                    State.Discovered.Add(r.Compound.Id);
-                    report.NewDiscovery = true;
-                    r.Xp *= 2; // İlk keşif bonusu
-                }
-            }
-            else if (r.Fail != null && !State.FailDex.Contains(r.Fail.Id))
+            State.ConsumeElements(atoms);
+            if (r.Fail != null && !State.FailDex.Contains(r.Fail.Id))
             {
                 State.FailDex.Add(r.Fail.Id);
                 report.NewFail = true;
+                State.Knowledge += KnowledgeNewFail;
+                report.Knowledge = KnowledgeNewFail;
                 r.Xp *= 2;
             }
             report.LevelUps = State.AddXp(r.Xp);
@@ -128,7 +267,33 @@ namespace Sorchemist.Core
             return report;
         }
 
-        // ---------- Köy: iksiri teslim et ----------
+        /// <summary>Demlemesi biten iksiri alır.</summary>
+        public BrewReport CollectBrew(long nowUnix)
+        {
+            if (!BrewDone(nowUnix)) return null;
+            var c = CompoundDatabase.Get(State.BrewingId);
+            State.BrewingId = null; State.BrewReadyAt = 0;
+            var report = new BrewReport
+            {
+                Result = new BrewResult { Success = true, Compound = c, Xp = c.Xp, MessageTr = c.NameTr + " (" + c.Formula + ") hazır! " + c.FlavorTr }
+            };
+            State.AddPotion(c.Id, 1);
+            if (!State.Discovered.Contains(c.Id))
+            {
+                State.Discovered.Add(c.Id);
+                report.NewDiscovery = true;
+                report.Result.Xp *= 2;
+                State.Knowledge += KnowledgeNewCompound;
+                report.Knowledge = KnowledgeNewCompound;
+            }
+            report.LevelUps = State.AddXp(report.Result.Xp);
+            Notify();
+            return report;
+        }
+
+        // =====================================================================
+        // Köy: iksiri teslim et
+        // =====================================================================
         public DeliveryReport Deliver(string potionId)
         {
             var q = ActiveQuest;
@@ -145,6 +310,7 @@ namespace Sorchemist.Core
             if (o.Fail != null && !State.FailDex.Contains(o.Fail.Id))
             {
                 State.FailDex.Add(o.Fail.Id);
+                State.Knowledge += KnowledgeNewFail;
                 rep.NewFail = true;
             }
             if (o.Success)
@@ -158,8 +324,10 @@ namespace Sorchemist.Core
             return rep;
         }
 
-        // ---------- Gizemli kutu: her 6 saatte bir köye gelir ----------
-        public const long MysteryInterval = 6 * 3600;
+        // =====================================================================
+        // Gizemli kutu
+        // =====================================================================
+        public long MysteryInterval { get { return (State.HasPassive(PassiveDatabase.TimeSand) ? 5 : 6) * 3600L; } }
 
         public bool MysteryReady(long nowUnix) { return nowUnix >= State.MysteryReadyAt; }
         public long MysterySecondsLeft(long nowUnix) { return Math.Max(0, State.MysteryReadyAt - nowUnix); }
@@ -170,7 +338,7 @@ namespace Sorchemist.Core
         {
             if (!MysteryReady(nowUnix)) return null;
             var r = new MysteryReward();
-            bool luck = State.HasSkill(SkillDatabase.Luck);
+            bool luck = State.HasPassive(PassiveDatabase.Luck);
             r.Gold = 20 + _rng.Next(41);
             r.Xp = 15;
             int picks = 1 + (_rng.NextDouble() < (luck ? 0.6 : 0.35) ? 1 : 0);
@@ -185,7 +353,7 @@ namespace Sorchemist.Core
             r.RawId = raws[_rng.Next(raws.Count)].Id;
 
             State.Gold += r.Gold;
-            foreach (var kv in r.Elements) State.AddElement(kv.Key, kv.Value);
+            foreach (var kv in r.Elements) r.Knowledge += GainElement(kv.Key, kv.Value);
             State.AddRaw(r.RawId, 1);
             State.MysteryReadyAt = nowUnix + MysteryInterval;
             State.MysteryOpened++;
@@ -194,14 +362,45 @@ namespace Sorchemist.Core
             return r;
         }
 
-        public bool UnlockSkill(string id)
+        // =====================================================================
+        // Pasif özellikler
+        // =====================================================================
+        public string CanBuyPassive(string id)
         {
-            bool ok = State.Unlock(id);
-            if (ok) Notify();
-            return ok;
+            var p = PassiveDatabase.Get(id);
+            if (p == null) return "Bilinmeyen özellik";
+            if (State.OwnedPassives.Contains(id)) return "Zaten sende";
+            if (State.Knowledge < p.Cost) return "Yetersiz Bilgi Puanı (" + p.Cost + " gerekli)";
+            return null;
         }
 
-        // Laboratuvarın dükkânı: altınla ham madde al (döngü kilitlenmesin diye)
+        public bool BuyPassive(string id)
+        {
+            if (CanBuyPassive(id) != null) return false;
+            State.Knowledge -= PassiveDatabase.Get(id).Cost;
+            State.OwnedPassives.Add(id);
+            if (State.EquippedPassives.Count < State.PassiveSlots) State.EquippedPassives.Add(id);
+            Notify();
+            return true;
+        }
+
+        public string Equip(string id)
+        {
+            if (!State.OwnedPassives.Contains(id)) return "Önce bu özelliği aç";
+            if (State.EquippedPassives.Contains(id)) return null;
+            if (State.EquippedPassives.Count >= State.PassiveSlots)
+                return "Bütün yuvalar dolu. Kuleyi yükselterek yeni yuva aç.";
+            State.EquippedPassives.Add(id);
+            Notify();
+            return null;
+        }
+
+        public void Unequip(string id)
+        {
+            if (State.EquippedPassives.Remove(id)) Notify();
+        }
+
+        // Laboratuvarın dükkânı: altınla ham madde al
         public const int RawPrice = 8;
         public bool BuyRaw(string rawId)
         {

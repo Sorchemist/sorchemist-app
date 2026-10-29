@@ -1,59 +1,56 @@
-// İki kollu yetenek ağacı: Bilim ve Büyü.
+// Pasif özellikler: Bilgi Puanı ile açılır, kulenin seviyesine göre sayısı artan yuvalara takılır.
+// Yalnızca takılı (yuvadaki) pasifler etki eder.
 using System;
 using System.Collections.Generic;
 
 namespace Sorchemist.Core
 {
-    public enum SkillBranch { Science, Magic }
-
     [Serializable]
-    public class SkillData
+    public class PassiveData
     {
         public string Id;
-        public SkillBranch Branch;
         public string NameTr;
         public string DescriptionTr;
-        public int Cost;
-        public string Requires;   // Önce açılması gereken yetenek (null = yok)
+        public int Cost;          // Bilgi Puanı
+        public string Icon;       // Sanat anahtarı (ör. el_79)
     }
 
-    public static class SkillDatabase
+    public static class PassiveDatabase
     {
-        // Sabit kimlikler (kodda kullanılır)
-        public const string PreciseScale = "sci_scale";     // Kazan kapasitesi +3
-        public const string Thermometer = "sci_thermo";     // Hedef ısı bandını gösterir
-        public const string Column = "sci_column";          // Ayrıştırmada +1 verim
-        public const string BigCauldron = "sci_bigcauldron";// Kazan kapasitesi +3 daha
-        public const string Periodic = "sci_periodic";      // Periyodik tabloda bilgi kartları
-        public const string Patience = "mag_patience";      // Isı toleransı +1 kademe
-        public const string PurpleFlame = "mag_purple";     // Mor alev (görsel)
-        public const string CrystalRain = "mag_crystals";   // Başarıda kristal yağmuru (görsel)
-        public const string TimeBend = "mag_timebend";      // Minioyunlar %30 daha kısa
-        public const string Luck = "mag_luck";              // Gizemli kristalden nadir element şansı
+        public const string GoldPurse = "p_gold";        // Altın geliri +%25
+        public const string Owl = "p_owl";               // Bilgi geliri +%25
+        public const string Builder = "p_builder";       // Yükseltme süreleri -%15
+        public const string PatientPot = "p_brew";       // Demleme süresi -%30
+        public const string Column = "p_column";         // Ayrıştırmada her elementten +1
+        public const string Luck = "p_luck";             // Gizemli kutuda ikinci element şansı
+        public const string TimeSand = "p_sand";         // Gizemli kutu 5 saatte bir
+        public const string Mendeleev = "p_mendeleev";   // Element kartlarında bilimsel bilgi
+        public const string CopperPot = "p_copper";      // Kazana +2 atom
+        public const string PurpleFlame = "p_purple";    // Mor alev + kristal yağmuru (görsel)
 
-        private static List<SkillData> _all;
-        public static IReadOnlyList<SkillData> All { get { Ensure(); return _all; } }
-        public static SkillData Get(string id) { Ensure(); return _all.Find(s => s.Id == id); }
+        private static List<PassiveData> _all;
+        public static IReadOnlyList<PassiveData> All { get { Ensure(); return _all; } }
+        public static PassiveData Get(string id) { Ensure(); return _all.Find(p => p.Id == id); }
 
-        private static void Add(string id, SkillBranch b, string name, int cost, string req, string desc)
+        static void Add(string id, string name, int cost, string icon, string desc)
         {
-            _all.Add(new SkillData { Id = id, Branch = b, NameTr = name, Cost = cost, Requires = req, DescriptionTr = desc });
+            _all.Add(new PassiveData { Id = id, NameTr = name, Cost = cost, Icon = icon, DescriptionTr = desc });
         }
 
-        private static void Ensure()
+        static void Ensure()
         {
             if (_all != null) return;
-            _all = new List<SkillData>();
-            Add(PreciseScale, SkillBranch.Science, "Hassas Terazi", 1, null, "Kazana 3 atom daha sığar (6 -> 9).");
-            Add(Thermometer, SkillBranch.Science, "Termometre", 1, null, "Isı minioyununda hedef bölgeyi gösterir.");
-            Add(Column, SkillBranch.Science, "Damıtma Kolonu", 2, Thermometer, "Ayrıştırmada her elementten +1 verim.");
-            Add(BigCauldron, SkillBranch.Science, "Bakır Kazan", 2, PreciseScale, "Kazana 3 atom daha sığar (9 -> 12).");
-            Add(Periodic, SkillBranch.Science, "Mendeleyev'in Defteri", 1, null, "Periyodik tablodaki elementlerin bilgi kartlarını açar.");
-            Add(Patience, SkillBranch.Magic, "Sabır Büyüsü", 1, null, "Tepkimeler bir kademe fazla/eksik ısıyı tolere eder.");
-            Add(PurpleFlame, SkillBranch.Magic, "Mor Alev", 1, null, "Bunsen bekinin alevi mor yanar. Sadece havalı.");
-            Add(CrystalRain, SkillBranch.Magic, "Kristal Yağmuru", 1, PurpleFlame, "Başarılı iksirlerde laboratuvara kristaller yağar.");
-            Add(TimeBend, SkillBranch.Magic, "Zaman Bükme", 2, Patience, "Minioyunlar %30 daha kısa sürer.");
-            Add(Luck, SkillBranch.Magic, "Şans Tılsımı", 2, null, "Gizemli kristalden nadir element çıkma şansı artar.");
+            _all = new List<PassiveData>();
+            Add(Mendeleev, "Mendeleyev'in Defteri", 10, "el_101", "Element kartlarında atom kütlesi, periyot ve grup bilgisi görünür.");
+            Add(PurpleFlame, "Mor Alev", 15, "el_19", "Kazanın alevi mor yanar, başarılı iksirlerde kristaller yağar.");
+            Add(GoldPurse, "Altın Kesesi", 20, "el_79", "Köyün altın geliri %25 artar.");
+            Add(PatientPot, "Sabırlı Kazan", 25, "el_8", "İksirlerin demlenme süresi %30 kısalır.");
+            Add(Owl, "Bilge Baykuş", 30, "el_53", "Bilgi Puanı geliri %25 artar.");
+            Add(Column, "Damıtma Kolonu", 40, "el_14", "Ayrıştırmada her elementten 1 fazla çıkar.");
+            Add(CopperPot, "Bakır Kazan", 45, "el_29", "Kazana 2 atom daha sığar.");
+            Add(Luck, "Şans Tılsımı", 50, "el_47", "Gizemli Kutu'dan ikinci element çıkma şansı artar.");
+            Add(Builder, "Hızlı Usta", 60, "el_26", "Bina yükseltme süreleri %15 kısalır.");
+            Add(TimeSand, "Zaman Kumu", 80, "el_14", "Gizemli Kutu 6 yerine 5 saatte bir gelir.");
         }
     }
 }

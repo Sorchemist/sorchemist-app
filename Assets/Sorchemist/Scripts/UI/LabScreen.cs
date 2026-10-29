@@ -1,4 +1,5 @@
 // Aqualf'in laboratuvarı: Kazan (iksir yapımı), Ayrıştır (ham madde -> element), Tarifler.
+// İksirler tıklama/minioyun olmadan, zamanla demlenir. Yeni deneyler köy binalarının seviyesiyle açılır.
 using System;
 using System.Collections;
 using System.Collections.Generic;
@@ -47,6 +48,7 @@ namespace Sorchemist.UI
         float _idleBubble;
         Text _emptyHint;
         bool _busy;
+        Text _brewLabel, _brewStatus;
 
         // Ayrıştır / Tarifler
         RectTransform _extractList, _recipeList;
@@ -176,8 +178,13 @@ namespace Sorchemist.UI
             UIKit.HList(row, 16);
             var clear = UIKit.Wood(UIKit.Btn(row, "Clear", "Boşalt", Theme.PanelLight, () => { _cauldron.Clear(); RefreshBrew(); }, 38));
             UIKit.LE(clear, -1, -1, 1);
-            var brew = UIKit.Wood(UIKit.Btn(row, "Brew", "PİŞİR!", UIKit.Hex("#E67E22"), OnBrew, 50), UIKit.Hex("#5A1E00"), UIKit.Hex("#FFB36B"));
+            var brew = UIKit.Wood(UIKit.Btn(row, "Brew", "PİŞİR!", UIKit.Hex("#E67E22"), OnBrew, 46), UIKit.Hex("#5A1E00"), UIKit.Hex("#FFB36B"));
             UIKit.LE(brew, -1, -1, 2);
+            _brewLabel = UIKit.LabelOf(brew);
+
+            _brewStatus = UIKit.Txt(_scene, "BrewStatus", "", 34, Theme.Gold, TextAnchor.MiddleCenter, FontStyle.Bold);
+            UIKit.Place(_brewStatus.rectTransform, new Vector2(CauldronX, 0), new Vector2(0, 520), new Vector2(520, 60));
+            _brewStatus.gameObject.AddComponent<Outline>().effectColor = new Color(0, 0, 0, 0.8f);
 
             var toggles = UIKit.Rect("Toggles", right);
             toggles.anchorMin = new Vector2(0, 1); toggles.anchorMax = Vector2.one; toggles.pivot = new Vector2(0.5f, 1);
@@ -277,7 +284,7 @@ namespace Sorchemist.UI
             {
                 if (CauldronTotal >= State.CauldronCapacity)
                 {
-                    G.Toast("Kazan dolu! (" + State.CauldronCapacity + " atom)\nBilim ağacından 'Hassas Terazi' ile büyüt.");
+                    G.Toast("Kazan dolu! (" + State.CauldronCapacity + " atom)\nAqualf'in Kulesi'ni yükselterek büyüt.");
                     return;
                 }
                 _cauldron[e.Symbol] = InCauldron(e.Symbol) + 1;
@@ -296,7 +303,7 @@ namespace Sorchemist.UI
             if (mystery) sources.Add("Gizemli Kristal (şansına bağlı)");
             string where = sources.Count > 0 ? "Nerede bulunur: " + string.Join(", ", sources.ToArray()) : "Bu element henüz köyde bulunmuyor. Belki ileride...";
 
-            bool sci = State.HasSkill(SkillDatabase.Periodic);
+            bool sci = State.HasPassive(PassiveDatabase.Mendeleev);
             RectTransform body;
             var m = UIKit.Modal(G.Overlay, AlchemyNames.Name(e.Number), out body, 820, 1300);
             var icon = Art.Get("el_" + e.Number);
@@ -311,7 +318,7 @@ namespace Sorchemist.UI
                 "\n<i>" + AlchemyNames.Lore(e.Number) + "</i>" +
                 (sci
                     ? "\n\nAtom kütlesi: " + e.Mass.ToString("0.###") + " u   •   Periyot: " + e.Period + (e.Group > 0 ? "   •   Grup: " + e.Group : "   (f-blok)")
-                    : "\n\n<color=#A99FC9>Bilimsel bilgi kartı için 'Mendeleyev'in Defteri' yeteneğini aç.</color>") +
+                    : "\n\n<color=#A99FC9>Bilimsel bilgi kartı için 'Mendeleyev'in Defteri' pasifini tak.</color>") +
                 (e.Radioactive ? "\n<color=#9CFF8A>Radyoaktif!</color>" : "") +
                 "\n\n" + where +
                 "\n\nElindeki: <b>" + have + "</b>", 32, Theme.Text, TextAnchor.UpperLeft);
@@ -362,7 +369,14 @@ namespace Sorchemist.UI
             var mix = MixColor();
             if (Art.Has("cauldron")) mix.a = _cauldron.Count == 0 ? 0f : 0.8f;   // boşken görseldeki sıvı görünsün
             _liquid.color = mix;
-            _flame.color = State.HasSkill(SkillDatabase.PurpleFlame) ? Theme.Magic : UIKit.Hex("#FF9F1C");
+            _flame.color = State.HasPassive(PassiveDatabase.PurpleFlame) ? Theme.Magic : UIKit.Hex("#FF9F1C");
+            if (Session.IsBrewing)
+            {
+                var bc = CompoundDatabase.Get(State.BrewingId);
+                var lc = UIKit.Hex(bc.ColorHex); lc.a = Art.Has("cauldron") ? 0.8f : 1f;
+                _liquid.color = lc;
+            }
+            UpdateBrewStatus();
 
             _invToggle.color = UIKit.TabColor(!_showTable, Theme.Magic, Theme.PanelLight);
             _tableToggle.color = UIKit.TabColor(_showTable, Theme.Magic, Theme.PanelLight);
@@ -403,31 +417,79 @@ namespace Sorchemist.UI
             }
         }
 
+        void UpdateBrewStatus()
+        {
+            if (_brewLabel == null) return;
+            long now = GameManager.Now;
+            if (Session.BrewDone(now))
+            {
+                _brewLabel.text = "TOPLA!";
+                _brewStatus.text = CompoundDatabase.Get(State.BrewingId).NameTr + " hazır!";
+            }
+            else if (Session.IsBrewing)
+            {
+                _brewLabel.text = BuildingDatabase.FormatDuration(Session.BrewSecondsLeft(now));
+                _brewStatus.text = CompoundDatabase.Get(State.BrewingId).NameTr + " demleniyor...";
+            }
+            else
+            {
+                _brewLabel.text = "PİŞİR!";
+                _brewStatus.text = "";
+            }
+        }
+
+        public override void Tick()
+        {
+            if (_tab == Tab.Brew) UpdateBrewStatus();
+        }
+
         void OnBrew()
         {
             if (_busy) return;
+            long now = GameManager.Now;
+            if (Session.BrewDone(now)) { Collect(now); return; }
+            if (Session.IsBrewing)
+            {
+                G.Toast("İksir demleniyor, sabır! Kalan: " + BuildingDatabase.FormatDuration(Session.BrewSecondsLeft(now)));
+                return;
+            }
             if (_cauldron.Count == 0) { G.Toast("Önce kazana element ekle!"); return; }
-            _busy = true;
-            _aqualf.SetMood(AqualfMood.Focus);
-
-            int highlight = -1;
-            var known = CompoundDatabase.FindByAtoms(_cauldron);
-            if (known != null && State.HasSkill(SkillDatabase.Thermometer) && State.Discovered.Contains(known.Id))
-                highlight = (int)known.MinHeat;
 
             var atoms = new Dictionary<string, int>(_cauldron);
-            Color mix = MixColor();
-            HeatMinigame.Run(G.Overlay, G.MinigameTime(10f), highlight, State.HasSkill(SkillDatabase.PurpleFlame), heat =>
-                StirMinigame.Run(G.Overlay, G.MinigameTime(6f), mix, q => Resolve(atoms, heat, q)));
+            var rep = Session.StartBrew(atoms, now);
+            if (rep.Locked)
+            {
+                AudioFX.Play(Sfx.Fail, 0.5f);
+                G.Toast(rep.Result.MessageTr);
+                return;
+            }
+            if (rep.Started)
+            {
+                _cauldron.Clear();
+                _aqualf.SetMood(AqualfMood.Focus);
+                var c = UIKit.Hex(rep.Result.Compound.ColorHex);
+                AudioFX.Play(Sfx.Bubble);
+                FX.I.Bubbles(_scene, c, CauldronCenter, 24, 260);
+                G.Toast(rep.Result.MessageTr + " Süre: " + BuildingDatabase.FormatDuration(Session.BrewSecondsLeft(now)));
+                RefreshBrew();
+                return;
+            }
+            if (rep.Result.Fail == null) { G.Toast(rep.Result.MessageTr); return; }
+            // Yanlış karışım: komik başarısızlık
+            _busy = true;
+            _cauldron.Clear();
+            _aqualf.React(rep.Result);
+            PlayResultFX(rep.Result);
+            StartCoroutine(ShowResultLater(rep));
         }
 
-        void Resolve(Dictionary<string, int> atoms, HeatLevel heat, float stir)
+        void Collect(long now)
         {
-            var rep = Session.Brew(atoms, heat, stir);
-            _cauldron.Clear();
-            var r = rep.Result;
-            _aqualf.React(r);
-            PlayResultFX(r);
+            var rep = Session.CollectBrew(now);
+            if (rep == null) return;
+            _busy = true;
+            _aqualf.React(rep.Result);
+            PlayResultFX(rep.Result);
             StartCoroutine(ShowResultLater(rep));
         }
 
@@ -443,7 +505,7 @@ namespace Sorchemist.UI
                 FX.I.Bubbles(_scene, c, center, 30, 300);
                 FX.I.Burst(_scene, c, center + Vector2.up * 100, 30, 700);
                 FX.I.SpriteBurst(_scene, "fx_success", center + Vector2.up * 120, 520);
-                if (State.HasSkill(SkillDatabase.CrystalRain)) FX.I.CrystalRain(ov, Theme.Magic, 35);
+                if (State.HasPassive(PassiveDatabase.PurpleFlame)) FX.I.CrystalRain(ov, Theme.Magic, 35);
                 return;
             }
             Haptics.Bump();
@@ -510,14 +572,14 @@ namespace Sorchemist.UI
                 var c = r.Compound;
                 ResultPopup.Show(c.NameTr + " (" + c.Formula + ")", UIKit.Hex(c.ColorHex),
                     "Etki: <b>" + CompoundDatabase.EffectNameTr(c.Effect) + "</b>\n\n" + c.FlavorTr, null,
-                    (rep.NewDiscovery ? "YENİ KEŞİF!  •  " : "") + "+" + r.Xp + " XP",
+                    (rep.NewDiscovery ? "YENİ KEŞİF!  •  " : "") + "+" + r.Xp + " XP" + (rep.Knowledge > 0 ? "  •  +" + rep.Knowledge + " Bilgi" : ""),
                     "Aqualf laboratuvarda " + c.NameTr + " (" + c.Formula + ") keşfetti!", () => Done(rep), "fx_success");
             }
             else if (r.Fail != null)
             {
                 string body = r.Fail.DescriptionTr + (string.IsNullOrEmpty(r.HintTr) ? "" : "\n\n<color=#FFD166>İpucu: " + r.HintTr + "</color>");
                 ResultPopup.Show(r.Fail.TitleTr, ResultPopup.RarityColor(r.Fail.Rarity), body, r.Fail.ScienceTr,
-                    (rep.NewFail ? "YENİ FAIL-DEX GİRDİSİ!  •  " : "") + ResultPopup.RarityName(r.Fail.Rarity) + "  •  +" + r.Xp + " XP",
+                    (rep.NewFail ? "YENİ FAIL-DEX GİRDİSİ!  •  " : "") + ResultPopup.RarityName(r.Fail.Rarity) + "  •  +" + r.Xp + " XP" + (rep.Knowledge > 0 ? "  •  +" + rep.Knowledge + " Bilgi" : ""),
                     "Aqualf'in laboratuvarında '" + r.Fail.TitleTr + "' anı!", () => Done(rep), "fx_fail");
             }
             else
@@ -537,7 +599,7 @@ namespace Sorchemist.UI
 
         void Update()
         {
-            if (_tab != Tab.Brew || _cauldron.Count == 0 || _busy) return;
+            if (_tab != Tab.Brew || (_cauldron.Count == 0 && !Session.IsBrewing) || _busy) return;
             _idleBubble += Time.deltaTime;
             if (_idleBubble > 0.9f)   // Kazan hafifçe fokurdasın (ASMR)
             {
@@ -561,7 +623,7 @@ namespace Sorchemist.UI
         {
             UIKit.Clear(_extractList);
             var head = UIKit.Txt(_extractList, "Head",
-                "Görevlerden ve Gizemli Kutu'dan kazandığın ham maddeleri gerçek kimya yöntemleriyle saf elementlere ayır.\n<color=#FFD166>Eksik malzemeyi " + GameSession.RawPrice + " altına satın alabilirsin.</color>", 30, Theme.TextDim);
+                "Görevlerden ve Gizemli Kutu'dan kazandığın ham maddeleri gerçek kimya yöntemleriyle saf elementlere ayır. İlk kez bulduğun her element +" + GameSession.KnowledgeNewElement + " Bilgi verir.\n<color=#FFD166>Eksik malzemeyi " + GameSession.RawPrice + " altına satın alabilirsin.</color>", 30, Theme.TextDim);
             UIKit.LE(head, 110);
 
             foreach (var raw in RawMaterialDatabase.All)
@@ -597,17 +659,16 @@ namespace Sorchemist.UI
 
         void StartExtract(RawMaterialData raw)
         {
-            DistillMinigame.Run(G.Overlay, raw, G.MinigameTime(6f), q =>
-            {
-                var got = Session.Extract(raw.Id, q);
-                if (got == null) return;
-                AudioFX.Play(Sfx.Chime, 0.7f);
-                FX.I.Bubbles(G.Overlay, UIKit.Hex(raw.ColorHex), Vector2.zero, 24, 300);
-                string list = got.Count == 0 ? "hiçbir şey (çok kötü damıtma!)" :
-                    string.Join(", ", got.Select(kv => "+" + kv.Value + " " + kv.Key).ToArray());
-                G.Toast("Saflık %" + Mathf.RoundToInt(q * 100) + "  |  " + list);
-                RefreshExtract();
-            });
+            int known0 = State.KnownElements.Count;
+            var got = Session.Extract(raw.Id);
+            if (got == null) return;
+            AudioFX.Play(Sfx.Chime, 0.7f);
+            FX.I.Bubbles(G.Overlay, UIKit.Hex(raw.ColorHex), Vector2.zero, 24, 300);
+            string list = got.Count == 0 ? "hiçbir şey çıkmadı" :
+                string.Join(", ", got.Select(kv => "+" + kv.Value + " " + kv.Key).ToArray());
+            int fresh = State.KnownElements.Count - known0;
+            G.Toast(raw.NameTr + ": " + list + (fresh > 0 ? "\nYeni element! +" + fresh * GameSession.KnowledgeNewElement + " Bilgi" : ""));
+            RefreshExtract();
         }
 
         // =====================================================================
@@ -625,22 +686,27 @@ namespace Sorchemist.UI
             UIKit.Clear(_recipeList);
             int found = CompoundDatabase.All.Count(c => State.Discovered.Contains(c.Id));
             var head = UIKit.Txt(_recipeList, "Head", "Keşfedilen bileşikler: " + found + " / " + CompoundDatabase.All.Count +
-                "\n<size=26>Bilinmeyenler için ipuçlarını köylülerin sözlerinde ara!</size>", 34, Theme.Accent);
+                "\n<size=26>Yeni deneyler köydeki evler yükseldikçe açılır. İpuçlarını köylülerin sözlerinde ara!</size>", 34, Theme.Accent);
             UIKit.LE(head, 110);
             foreach (var c in CompoundDatabase.All)
             {
                 bool known = State.Discovered.Contains(c.Id);
+                var unlock = BuildingDatabase.UnlockFor(c.Id);
+                bool open = State.IsUnlocked(c.Id);
+                string lockText = unlock == null ? "" : open
+                    ? "<color=#7CF2C8>Açık · " + BuildingDatabase.NameTr(unlock.BuildingId) + "</color>"
+                    : "<color=#FF9F9F>Kilitli: " + BuildingDatabase.NameTr(unlock.BuildingId) + " Sv." + unlock.Level + " gerekli</color>";
                 var row = UIKit.Panel(_recipeList, "R_" + c.Id, known ? Theme.Panel : Theme.PanelLight * 0.8f + Color.black * 0.2f);
-                UIKit.LE(row, known ? 230 : 150);
+                UIKit.LE(row, known ? 240 : 190);
                 var dot = UIKit.Img(row.transform, "Dot", known ? UIKit.Hex(c.ColorHex) : Color.gray, UIKit.Circle);
                 UIKit.Place(dot.rectTransform, new Vector2(0, 0.5f), new Vector2(60, 0), new Vector2(70, 70));
                 string text;
                 if (known)
                     text = "<b>" + c.NameTr + "  " + c.Formula + "</b>   <color=#FFD166>" + CompoundDatabase.EffectNameTr(c.Effect) + "</color>\n" +
-                           "<size=26><color=#A99FC9>Isı: " + HeatRange(c) + (c.NeedsStir ? " • karıştır" : "") + "</color>\n" + c.FlavorTr + "</size>";
+                           "<size=26><color=#A99FC9>Demleme: " + BuildingDatabase.FormatDuration(Session.BrewDuration(c)) + "</color>  " + lockText + "\n" + c.FlavorTr + "</size>";
                 else
                     text = "<b>???</b>   <color=#FFD166>" + CompoundDatabase.EffectNameTr(c.Effect) + "</color>\n<size=26><color=#A99FC9>" +
-                           c.AtomCount + " atom • içinde " + c.Atoms.Keys.First() + " var</color></size>";
+                           c.AtomCount + " atom • içinde " + c.Atoms.Keys.First() + " var</color>\n" + lockText + "</size>";
                 var t = UIKit.Txt(row.transform, "T", text, 34, Theme.Text, TextAnchor.MiddleLeft);
                 UIKit.Stretch(t.rectTransform, 120, 10, 20, 10);
             }

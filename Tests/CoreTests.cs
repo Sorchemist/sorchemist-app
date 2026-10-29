@@ -35,30 +35,52 @@ static class CoreTests
         Check(patient.Success, "Sabır büyüsü 1 kademe tolerans verir");
 
         Console.WriteLine("Oyun akışı");
+        long now = 1000000;
         var s = new GameSession(PlayerState.NewGame(), 42);
         Check(s.ActiveQuest != null && s.ActiveQuest.Id == "q_thirst", "İlk görev: su");
         s.State.AddElement("H", 2); s.State.AddElement("O", 1);
-        var rep = s.Brew(A("H2O"), HeatLevel.Cold, 0f);
-        Check(rep.Result.Success && rep.NewDiscovery && s.State.PotionCount("water") == 1, "Su pişirildi ve keşfedildi");
-        Check(s.State.ElementCount("H") == 0, "Malzemeler harcandı");
+        var rep = s.StartBrew(A("H2O"), now);
+        Check(rep.Started && s.IsBrewing && s.State.ElementCount("H") == 0, "Su demlenmeye başladı, malzemeler harcandı");
+        Check(s.CollectBrew(now + 5) == null, "Süre dolmadan toplanamaz");
+        var col = s.CollectBrew(now + s.BrewDuration(CompoundDatabase.Get("water")));
+        Check(col != null && col.NewDiscovery && s.State.PotionCount("water") == 1, "Su toplandı ve keşfedildi");
+        Check(s.State.Knowledge >= GameSession.KnowledgeNewCompound, "Keşif Bilgi Puanı verdi");
         var d = s.Deliver("water");
         Check(d.Outcome.Success && s.State.CompletedQuests.Contains("q_thirst"), "Görev tamamlandı");
         Check(s.ActiveQuest.Id != "q_thirst", "Yeni görev geldi");
+
+        // Kilitli deney: kireç taşı (Rüzgar evi Sv.3)
+        s.State.AddElement("Ca", 1); s.State.AddElement("C", 1); s.State.AddElement("O", 3);
+        var lk = s.StartBrew(A("CaCO3"), now);
+        Check(lk.Locked && !lk.Started && s.State.ElementCount("Ca") == 1, "Kilitli deney malzeme harcamaz");
 
         // Yanlış iksir -> kabak istilası
         var bugs = VillageDatabase.GetQuest("q_bugs");
         var o = QuestResolver.Deliver(bugs, CompoundDatabase.Get("ammonia"), new Random(1));
         Check(!o.Success && o.Fail.Id == "giant_pumpkins" && o.NewHouseState == HouseState.GiantPumpkins, "Gübre böcek görevinde kabak istilası yapar");
 
-        Console.WriteLine("Ayrıştırma ve yetenekler");
+        Console.WriteLine("Binalar ve gelir");
+        Check(BuildingDatabase.UpgradeSeconds(1) == 60 && BuildingDatabase.UpgradeSeconds(4) == 3600 && BuildingDatabase.UpgradeSeconds(11) == 24 * 86400, "Yükseltme süreleri 1 dk .. 24 gün");
+        Check(BuildingDatabase.UpgradeSeconds(12) == 0, "Sv.12 son seviye");
+        var g = new GameSession(PlayerState.NewGame(), 7);
+        g.State.Gold = 1000;
+        Check(g.StartUpgrade("sucu", now) && g.State.Building("sucu").UpgradeEndsAt == now + 60, "Sucu evi yükseltmesi 1 dk");
+        Check(g.CanUpgrade("derici") != null, "Tek usta: ikinci yükseltme bekler");
+        Check(g.CompleteUpgrades(now + 59).Count == 0 && g.CompleteUpgrades(now + 60).Count == 1 && g.State.BuildingLevel("sucu") == 2, "Süre dolunca Sv.2");
+        int gold0 = g.State.Gold;
+        for (int i = 0; i < 60; i++) g.TickOnline(1f);
+        Check(g.State.Gold > gold0, "Oyun açıkken altın birikir");
+        Check(g.State.CauldronCapacity == 6, "Başlangıç kapasitesi 6");
+
+        Console.WriteLine("Ayrıştırma ve pasifler");
         var got = Extractor.Extract(RawMaterialDatabase.Get("seawater"), 1f, 0, false, new Random(3));
         Check(got.ContainsKey("Na") && got.ContainsKey("Cl"), "Deniz suyundan Na ve Cl");
-        var st = PlayerState.NewGame();
-        Check(st.CauldronCapacity == 6, "Başlangıç kapasitesi 6");
-        st.AddXp(500);
-        Check(st.Level > 1 && st.SkillPoints == st.Level - 1, "XP ile seviye ve puan");
-        Check(st.Unlock(SkillDatabase.PreciseScale) && st.CauldronCapacity == 9, "Hassas Terazi -> 9");
-        Check(st.CanUnlock(SkillDatabase.Column) != null || st.HasSkill(SkillDatabase.Thermometer), "Damıtma Kolonu önce Termometre ister");
+        g.State.Knowledge = 100;
+        Check(g.BuyPassive(PassiveDatabase.CopperPot) && g.State.CauldronCapacity == 8, "Bakır Kazan -> 8");
+        Check(g.State.PassiveSlots == 1 && g.BuyPassive(PassiveDatabase.Owl) && !g.State.HasPassive(PassiveDatabase.Owl), "Tek yuva: ikinci pasif takılmaz");
+        Check(g.Equip(PassiveDatabase.Owl) != null, "Yuva dolu uyarısı");
+        g.Unequip(PassiveDatabase.CopperPot);
+        Check(g.Equip(PassiveDatabase.Owl) == null && g.State.HasPassive(PassiveDatabase.Owl), "Çıkar-tak çalışır");
 
         Console.WriteLine(_fail == 0 ? "\nTÜM TESTLER GEÇTİ" : "\n" + _fail + " TEST BAŞARISIZ");
         return _fail == 0 ? 0 : 1;
