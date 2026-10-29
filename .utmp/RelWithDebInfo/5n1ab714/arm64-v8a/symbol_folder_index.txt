@@ -1,0 +1,1 @@
+C:\Users\Murat\Documents\sorchemist-app\Library\Bee\Android\Prj\IL2CPP\Gradle\unityLibrary\build\intermediates\cxx\RelWithDebInfo\5n1ab714\obj\arm64-v8a

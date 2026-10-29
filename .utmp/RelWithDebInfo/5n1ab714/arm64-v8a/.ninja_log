@@ -1,0 +1,12 @@
+# ninja log v5
+40	212	8149958134038214	FramePacing/CMakeFiles/swappywrapper.dir/UnitySwappyWrapper.cpp.o	56d930482525537
+214	334	8149958135164571	C:/Users/Murat/Documents/sorchemist-app/Library/Bee/Android/Prj/IL2CPP/Gradle/unityLibrary/build/intermediates/cxx/RelWithDebInfo/5n1ab714/obj/arm64-v8a/libswappywrapper.so	a042ef2bf614d324
+15	681	8149958138682318	GameActivity/CMakeFiles/game.dir/UGAInputKeyEvent.cpp.o	4554cf3c5849923c
+23	685	8149958138722663	GameActivity/CMakeFiles/game.dir/UGAEntry.cpp.o	62fae1434de6a2cc
+1	696	8149958138853947	GameActivity/CMakeFiles/game.dir/UGAConfiguration.cpp.o	b5225994bd916f39
+33	708	8149958138969518	GameActivity/CMakeFiles/game.dir/UGAInputMotionEvent.cpp.o	3d85bb03f8c26c74
+6	731	8149958139191226	GameActivity/CMakeFiles/game.dir/UGADebug.cpp.o	819fdec102a2ecac
+28	820	8149958140103838	GameActivity/CMakeFiles/game.dir/UGASoftKeyboard.cpp.o	ef429200cb24ea07
+19	850	8149958140392017	GameActivity/CMakeFiles/game.dir/UGAInput.cpp.o	faa921d064ed1a6d
+11	905	8149958140917866	GameActivity/CMakeFiles/game.dir/UGAApplication.cpp.o	fb9b75a38472cd0a
+905	975	8149958141640763	C:/Users/Murat/Documents/sorchemist-app/Library/Bee/Android/Prj/IL2CPP/Gradle/unityLibrary/build/intermediates/cxx/RelWithDebInfo/5n1ab714/obj/arm64-v8a/libgame.so	1845cf9ab0e075f3
