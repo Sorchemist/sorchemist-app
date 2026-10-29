@@ -55,10 +55,13 @@ namespace Sorchemist.Core
         public static PlayerState NewGame()
         {
             var s = new PlayerState();
-            s.AddRaw("seawater", 2);
-            s.AddRaw("dewcap", 2);
-            s.AddRaw("air", 1);
-            s.AddRaw("ash", 1);
+            // Haritada toplama noktası yok; başlangıç malzemeleri biraz daha cömert
+            s.Gold = 30;
+            s.AddRaw("seawater", 3);
+            s.AddRaw("dewcap", 3);
+            s.AddRaw("air", 2);
+            s.AddRaw("ash", 2);
+            s.AddRaw("limestone", 1);
             return s;
         }
 

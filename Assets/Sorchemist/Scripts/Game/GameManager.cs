@@ -180,7 +180,7 @@ namespace Sorchemist.Game
             {
                 "Hoş geldin! Ben Aqualf, Fındıkdere köyünün tek simyacısıyım.",
                 "Köylüler dertlerini kapıma getirir, ben de onlara iksir hazırlarım.",
-                "Ama sihrin sırrı kimyadır: haritadan ham madde topla, laboratuvarda elementlere ayır...",
+                "Ama sihrin sırrı kimyadır: ham maddeleri laboratuvarda elementlere ayır. Yenilerini görevlerden ve 6 saatte bir gelen Gizemli Kutu'dan kazanırsın...",
                 "...sonra doğru atomları doğru ısıda kazana at. Yanlış olursa? Eh... Fail-Dex'e bir sayfa daha!",
                 "Hadi, kapıda biri var gibi. Haritadaki ünlem işaretine dokun!"
             }, null);

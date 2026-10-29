@@ -20,46 +20,46 @@ namespace Sorchemist.UI
         RectTransform _map, _objects, _questBanner;
         Text _questText;
         readonly Dictionary<string, RectTransform> _houseViews = new Dictionary<string, RectTransform>();
-        readonly Dictionary<string, Text> _nodeTimers = new Dictionary<string, Text>();
-        readonly Dictionary<string, Image> _nodeImages = new Dictionary<string, Image>();
         float _tick;
         RectTransform _mystery;
         Image _mysteryImg;
         Text _mysteryLabel;
         int _mysterySpot = -1;
         readonly HashSet<string> _artHouses = new HashSet<string>();
-        readonly HashSet<string> _artNodes = new HashSet<string>();
 
-        // Ham madde noktalarının harita konumları (gx, gy)
-        static readonly Dictionary<string, Vector2Int> NodePos = new Dictionary<string, Vector2Int>
-        {
-            { "air", new Vector2Int(3, 0) }, { "hematite", new Vector2Int(0, 1) },
-            { "magnesite", new Vector2Int(5, 1) }, { "dewcap", new Vector2Int(3, 2) },
-            { "limestone", new Vector2Int(0, 3) }, { "ash", new Vector2Int(3, 4) },
-            { "guano", new Vector2Int(3, 5) }, { "malachite", new Vector2Int(5, 5) },
-            { "sulfur", new Vector2Int(1, 6) }, { "crystal", new Vector2Int(3, 6) },
-            { "seawater", new Vector2Int(6, 3) }, { "sand", new Vector2Int(6, 5) },
-        };
-        // Dekor (Tiles.jpg parçaları)
+        // Haritada ham madde noktası yok: ham maddeler laboratuvardan, görevlerden ve Gizemli Kutu'dan gelir.
+        // Dekor (Tiles.jpg parçaları) oynanabilir alan içinde
         static readonly Dictionary<Vector2Int, string> Decor = new Dictionary<Vector2Int, string>
         {
             { new Vector2Int(0, 0), "decor_forest" }, { new Vector2Int(5, 0), "decor_forest2" },
+            { new Vector2Int(0, 1), "decor_forest2" }, { new Vector2Int(5, 1), "decor_mushrooms" },
+            { new Vector2Int(0, 3), "decor_bushes" }, { new Vector2Int(5, 5), "decor_forest" },
             { new Vector2Int(0, 5), "decor_mushrooms" }, { new Vector2Int(0, 6), "decor_arch" },
-            { new Vector2Int(2, 6), "decor_logs" }, { new Vector2Int(4, 6), "decor_fence" },
-            { new Vector2Int(5, 6), "decor_bushes" }, { new Vector2Int(6, 1), "decor_waterfall" },
+            { new Vector2Int(1, 6), "decor_bushes" }, { new Vector2Int(2, 6), "decor_logs" },
+            { new Vector2Int(4, 6), "decor_fence" }, { new Vector2Int(5, 6), "decor_bushes" },
+            { new Vector2Int(6, 1), "decor_waterfall" }, { new Vector2Int(3, 0), "decor_signpost" },
         };
+        static readonly string[] FillerDecor = { "decor_forest", "decor_forest2", "decor_bushes", "decor_mushrooms" };
         static readonly Vector2Int LabPos = new Vector2Int(3, 3);
-        const float Margin = 260;
+        const float Margin = 150;          // üst kenar ile (0,0) karosunun merkezi arası
+
+        // Haritanın kaydırılabilir dikdörtgeni (yerel koordinat). Bu dikdörtgenin her pikseli bir karo ile dolu
+        // olduğu ve kaydırma "Clamped" olduğu için ekranda hiç boş alan görünmez.
+        static float HalfWidth { get { return (GridSize - 1) * TileW * 0.5f; } }
+        static float Bottom { get { return -(Margin + (GridSize - 1) * TileH + Margin); } }
+
+        static bool Playable(int gx, int gy) { return gx >= 0 && gy >= 0 && gx < GridSize && gy < GridSize; }
 
         static Vector2 IsoToLocal(int gx, int gy)
         {
-            // Haritanın tepesi (0,0) üstte ortada; dönen değer karonun üst yüz merkezi
+            // Dönen değer karonun üst yüz merkezi
             return new Vector2((gx - gy) * TileW * 0.5f, -(gx + gy) * TileH * 0.5f - Margin);
         }
 
         static string GroundKey(int gx, int gy)
         {
             if (gx == RiverX) return "tile_water";
+            if (!Playable(gx, gy)) return ((gx * 5 + gy * 11) % 9 == 0) ? "tile_grass_b" : "tile_grass";
             if (gx == LabPos.x && gy == LabPos.y) return "tile_cross";
             if (gx == LabPos.x || gy == LabPos.y) return "tile_path";
             return ((gx * 7 + gy * 3) % 5 == 0) ? "tile_grass_b" : "tile_grass";
@@ -92,7 +92,9 @@ namespace Sorchemist.UI
             Destroy(content.GetComponent<ContentSizeFitter>());
             content.anchorMin = content.anchorMax = new Vector2(0.5f, 1);
             content.pivot = new Vector2(0.5f, 1);
-            content.sizeDelta = new Vector2(GridSize * TileW + 500, GridSize * TileH + Margin + 500);
+            content.sizeDelta = new Vector2(HalfWidth * 2, -Bottom);
+            sr.movementType = ScrollRect.MovementType.Clamped;   // haritanın dışına taşmak yok
+            sr.inertia = true; sr.decelerationRate = 0.12f;
             _map = content;
 
             var tiles = UIKit.Rect("Tiles", _map);
@@ -101,9 +103,15 @@ namespace Sorchemist.UI
             UIKit.Place(_objects, new Vector2(0.5f, 1), Vector2.zero, Vector2.zero);
 
             // Zemin blokları: arkadan öne (gx+gy küçükten büyüğe) çizilir
+            // Dikdörtgeni tamamen kaplayan bütün karolar (oynanabilir 7x7 + çevresindeki dolgu karoları)
             var cells = new List<Vector2Int>();
-            for (int gy = 0; gy < GridSize; gy++)
-                for (int gx = 0; gx < GridSize; gx++) cells.Add(new Vector2Int(gx, gy));
+            for (int gy = -GridSize; gy < GridSize * 2; gy++)
+                for (int gx = -GridSize; gx < GridSize * 2; gx++)
+                {
+                    var c = IsoToLocal(gx, gy);
+                    if (Mathf.Abs(c.x) <= HalfWidth + TileW * 0.5f + 1 && c.y <= TileH * 0.5f + 1 && c.y >= Bottom - TileH * 0.5f - 1)
+                        cells.Add(new Vector2Int(gx, gy));
+                }
             cells.Sort((p, q) => (p.x + p.y).CompareTo(q.x + q.y));
             foreach (var c in cells)
             {
@@ -131,10 +139,14 @@ namespace Sorchemist.UI
                 var villager = v;
                 items.Add(new KeyValuePair<int, Action>(v.GridX + v.GridY, () => BuildHouse(villager)));
             }
-            foreach (var kv in NodePos)
+            // Dolgu karolarına rastgele (sabit) orman/çalı
+            foreach (var c in cells)
             {
-                var id = kv.Key; var p = kv.Value;
-                items.Add(new KeyValuePair<int, Action>(p.x + p.y, () => BuildNode(id, p)));
+                if (Playable(c.x, c.y) || c.x == RiverX) continue;
+                int h = Mathf.Abs(c.x * 73856093 ^ c.y * 19349663);
+                if (h % 3 != 0) continue;
+                var key = FillerDecor[h % FillerDecor.Length]; var p = c;
+                items.Add(new KeyValuePair<int, Action>(p.x + p.y, () => BuildDecor(key, p)));
             }
             foreach (var kv in Decor)
             {
@@ -150,7 +162,7 @@ namespace Sorchemist.UI
             const float zoom = 0.6f;
             content.localScale = Vector3.one * zoom;
             // Haritayı laboratuvara ortala
-            content.anchoredPosition = new Vector2(0, ((LabPos.x + LabPos.y) * TileH * 0.5f + Margin) * zoom - 420);
+            content.anchoredPosition = new Vector2(0, -IsoToLocal(LabPos.x, LabPos.y).y * zoom - 470);
 
             // Görev afişi (ekranın üstünde sabit)
             var banner = UIKit.Btn(Root, "QuestBanner", "", UIKit.Hex("#8E44AD"), OpenQuest, 34);
@@ -159,7 +171,7 @@ namespace Sorchemist.UI
             UIKit.Place(_questBanner, new Vector2(0.5f, 1), new Vector2(0, -70), new Vector2(1000, 110));
             _questText = UIKit.LabelOf(banner);
 
-            var hint = UIKit.Txt(Root, "Hint", "Haritayı kaydır • Kaynaklara dokunarak topla • Evlere dokunup sohbet et", 26, new Color(1, 1, 1, 0.75f));
+            var hint = UIKit.Txt(Root, "Hint", "Haritayı kaydır • Evlere dokunup sohbet et • Gizemli Kutu'yu kaçırma", 26, new Color(1, 1, 1, 0.75f));
             hint.gameObject.AddComponent<Outline>().effectColor = new Color(0, 0, 0, 0.7f);
             UIKit.Place(hint.rectTransform, new Vector2(0.5f, 0), new Vector2(0, 26), new Vector2(1400, 44));
         }
@@ -194,15 +206,6 @@ namespace Sorchemist.UI
                 UIKit.Place(door.rectTransform, new Vector2(0.5f, 0), new Vector2(0, 30), new Vector2(56, 84), new Vector2(0.5f, 0));
             }
 
-            // Evin önünde duran köylü (Art: villager_<kimlik>)
-            var figArt = Art.Get("villager_" + v.Id);
-            if (figArt != null)
-            {
-                var fig = Art.Image(rt, "Villager", figArt);
-                UIKit.Place(fig.rectTransform, new Vector2(0, 0), new Vector2(10, -24), new Vector2(120, 140), new Vector2(0.5f, 0));
-                fig.raycastTarget = false;
-            }
-
             var label = UIKit.Txt(rt, "Name", v.NameTr, 26, Color.white, TextAnchor.MiddleCenter, FontStyle.Bold);
             UIKit.Place(label.rectTransform, new Vector2(0.5f, 0), new Vector2(0, -30), new Vector2(300, 36));
             label.gameObject.AddComponent<Outline>().effectColor = new Color(0, 0, 0, 0.8f);
@@ -232,36 +235,6 @@ namespace Sorchemist.UI
             btn.onClick.AddListener(() => TapHouse(v));
             if (roof != wall) roof.gameObject.AddComponent<Button>().onClick.AddListener(() => TapHouse(v));
             _houseViews[v.Id] = rt;
-        }
-
-        void BuildNode(string rawId, Vector2Int p)
-        {
-            var raw = RawMaterialDatabase.Get(rawId);
-            var rt = ObjectRoot("Node_" + rawId, p.x, p.y, new Vector2(200, 220));
-            var nodeArt = Art.Get("node_" + rawId);
-            Image img;
-            if (nodeArt != null)
-            {
-                img = Art.Image(rt, "Icon", nodeArt);
-                UIKit.Place(img.rectTransform, new Vector2(0.5f, 0), new Vector2(0, 30), new Vector2(170, 150), new Vector2(0.5f, 0));
-                _artNodes.Add(rawId);
-                img.gameObject.AddComponent<Bouncer>().Amplitude = 6;
-            }
-            else
-            {
-                img = UIKit.Img(rt, "Icon", UIKit.Hex(raw.ColorHex), rawId == "crystal" ? UIKit.Diamond : UIKit.Circle);
-                UIKit.Place(img.rectTransform, new Vector2(0.5f, 0), new Vector2(0, 40), rawId == "crystal" ? new Vector2(80, 120) : new Vector2(110, 90), new Vector2(0.5f, 0));
-                if (rawId == "crystal") img.rectTransform.localRotation = Quaternion.Euler(0, 0, 90);
-            }
-            img.gameObject.AddComponent<Button>().onClick.AddListener(() => TapNode(rawId, rt));
-            var label = UIKit.Txt(rt, "Name", raw.NameTr, 26, Color.white, TextAnchor.MiddleCenter, FontStyle.Bold);
-            UIKit.Place(label.rectTransform, new Vector2(0.5f, 0), new Vector2(0, 8), new Vector2(300, 36));
-            label.gameObject.AddComponent<Outline>().effectColor = new Color(0, 0, 0, 0.8f);
-            var timer = UIKit.Txt(rt, "Timer", "", 26, Theme.Gold, TextAnchor.MiddleCenter, FontStyle.Bold);
-            UIKit.Place(timer.rectTransform, new Vector2(0.5f, 0), new Vector2(0, 200), new Vector2(180, 40));
-            timer.gameObject.AddComponent<Outline>().effectColor = Color.black;
-            _nodeTimers[rawId] = timer;
-            _nodeImages[rawId] = img;
         }
 
         void BuildDecor(string key, Vector2Int p)
@@ -375,24 +348,6 @@ namespace Sorchemist.UI
         }
 
         // ---------- Etkileşimler ----------
-        void TapNode(string rawId, RectTransform rt)
-        {
-            long now = DateTimeOffset.UtcNow.ToUnixTimeSeconds();
-            if (Session.Collect(rawId, now))
-            {
-                AudioFX.Play(Sfx.Collect);
-                Haptics.Bump();
-                var raw = RawMaterialDatabase.Get(rawId);
-                FX.I.Burst(_objects, UIKit.Hex(raw.ColorHex), rt.anchoredPosition + Vector2.up * 60, 20, 500);
-                FX.I.FloatText(_objects, "+1 " + raw.NameTr, Color.white, rt.anchoredPosition + Vector2.up * 150);
-                RefreshNodes();
-            }
-            else
-            {
-                G.Toast("Bu kaynak henüz yenilenmedi. Biraz bekle!");
-            }
-        }
-
         void TapHouse(VillagerData v)
         {
             var q = Session.ActiveQuest;
@@ -485,7 +440,6 @@ namespace Sorchemist.UI
                 kv.Value.Find("Bang").gameObject.SetActive(q != null && q.VillagerId == kv.Key);
                 ApplyHouseState(kv.Value, State.GetHouse(kv.Key));
             }
-            RefreshNodes();
             RefreshMystery();
         }
 
@@ -542,25 +496,10 @@ namespace Sorchemist.UI
             wall.color = (_artHouses.Contains(v.Id) ? Color.white : UIKit.Hex(v.ColorHex)) * tint;
         }
 
-        void RefreshNodes()
-        {
-            long now = DateTimeOffset.UtcNow.ToUnixTimeSeconds();
-            foreach (var kv in _nodeTimers)
-            {
-                long left = State.NodeReadyAt(kv.Key) - now;
-                bool ready = left <= 0;
-                kv.Value.text = ready ? "Hazır!" : (left / 60) + ":" + (left % 60).ToString("00");
-                kv.Value.color = ready ? Theme.Accent : Theme.Gold;
-                var img = _nodeImages[kv.Key];
-                var c = _artNodes.Contains(kv.Key) ? Color.white : UIKit.Hex(RawMaterialDatabase.Get(kv.Key).ColorHex);
-                img.color = ready ? c : Color.Lerp(c, Color.gray, 0.6f);
-            }
-        }
-
         void Update()
         {
             _tick += Time.deltaTime;
-            if (_tick > 1f) { _tick = 0; RefreshNodes(); RefreshMystery(); }
+            if (_tick > 1f) { _tick = 0; RefreshMystery(); }
         }
     }
 }

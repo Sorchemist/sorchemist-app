@@ -561,7 +561,7 @@ namespace Sorchemist.UI
         {
             UIKit.Clear(_extractList);
             var head = UIKit.Txt(_extractList, "Head",
-                "Haritadan topladığın ham maddeleri gerçek kimya yöntemleriyle saf elementlere ayır.\n<color=#FFD166>Eksik malzemeyi " + GameSession.RawPrice + " altına satın alabilirsin.</color>", 30, Theme.TextDim);
+                "Görevlerden ve Gizemli Kutu'dan kazandığın ham maddeleri gerçek kimya yöntemleriyle saf elementlere ayır.\n<color=#FFD166>Eksik malzemeyi " + GameSession.RawPrice + " altına satın alabilirsin.</color>", 30, Theme.TextDim);
             UIKit.LE(head, 110);
 
             foreach (var raw in RawMaterialDatabase.All)
