@@ -28,7 +28,7 @@ namespace Sorchemist.UI
             UIKit.Clear(_grid);
             int have = FailDexDatabase.All.Count(f => State.FailDex.Contains(f.Id));
             _header.text = "Fail-Dex  " + have + " / " + FailDexDatabase.All.Count +
-                           "\n<size=28><color=#A99FC9>Hata yapmak da bilimdir. Hepsini topla!</color></size>";
+                           Loc.T("\n<size=28><color=#A99FC9>Hata yapmak da bilimdir. Hepsini topla!</color></size>", "\n<size=28><color=#A99FC9>Making mistakes is science too. Collect them all!</color></size>");
 
             foreach (var f in FailDexDatabase.All)
             {
@@ -36,7 +36,7 @@ namespace Sorchemist.UI
                 bool unlocked = State.FailDex.Contains(f.Id);
                 var col = ResultPopup.RarityColor(f.Rarity);
                 var card = UIKit.Btn(_grid, "F_" + f.Id, "", unlocked ? Theme.Panel : UIKit.Hex("#1F1936"),
-                    () => { if (unlocked) Open(entry); else G.Toast("Bu başarısızlığı henüz yaşamadın. Deney yapmaya devam!"); }, 30);
+                    () => { if (unlocked) Open(entry); else G.Toast(Loc.T("Bu başarısızlığı henüz yaşamadın. Deney yapmaya devam!", "You haven't had this fail yet. Keep experimenting!")); }, 30);
                 var cardArt = Art.Sliced("card_parchment", new Vector4(50, 50, 50, 50));
                 if (cardArt != null)
                 {
@@ -66,8 +66,8 @@ namespace Sorchemist.UI
         void Open(FailEntry f)
         {
             ResultPopup.Show(f.TitleTr, ResultPopup.RarityColor(f.Rarity), f.DescriptionTr, f.ScienceTr,
-                ResultPopup.RarityName(f.Rarity) + " başarısızlık",
-                "Fail-Dex koleksiyonuma '" + f.TitleTr + "' eklendi!", null, "fx_fail");
+                ResultPopup.RarityName(f.Rarity) + Loc.T(" başarısızlık", " fail"),
+                Loc.T("Fail-Dex koleksiyonuma '", "Added '") + f.TitleTr + Loc.T("' eklendi!", "' to my Fail-Dex collection!"), null, "fx_fail");
         }
     }
 }

@@ -17,9 +17,12 @@ namespace Sorchemist.Core
     public class FailEntry
     {
         public string Id;
-        public string TitleTr;
-        public string DescriptionTr;  // Ne oldu (komik)
-        public string ScienceTr;      // Neden oldu (eğitici)
+        public string TitleTr { get { return Loc.Pick(_titleTr, TitleEn); } set { _titleTr = value; } }
+        string _titleTr; public string TitleEn;
+        public string DescriptionTr { get { return Loc.Pick(_descriptionTr, DescriptionEn); } set { _descriptionTr = value; } }  // Ne oldu (komik)
+        string _descriptionTr; public string DescriptionEn;
+        public string ScienceTr { get { return Loc.Pick(_scienceTr, ScienceEn); } set { _scienceTr = value; } }      // Neden oldu (eğitici)
+        string _scienceTr; public string ScienceEn;
         public FailRarity Rarity;
         public FailVisual Visual;
         public int Xp;                // Başarısızlık da öğretir!
@@ -41,6 +44,13 @@ namespace Sorchemist.Core
         }
 
         private static void Ensure()
+        {
+            if (_all != null) return;
+            EnsureData();
+            English.ApplyFails(_ordered);
+        }
+
+        private static void EnsureData()
         {
             if (_all != null) return;
             _all = new Dictionary<string, FailEntry>();

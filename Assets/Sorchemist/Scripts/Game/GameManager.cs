@@ -51,7 +51,9 @@ namespace Sorchemist.Game
 
             var loaded = SaveService.Load();
             _isNewGame = loaded == null;
+            if (loaded != null) Loc.Current = (Lang)loaded.Language;   // kayıtlı dil (yeni oyunda mevcut dil korunur)
             Session = new GameSession(loaded);
+            State.Language = (int)Loc.Current;
             Session.Changed += () => { _dirty = true; if (_hud != null) _hud.Refresh(); };
             AudioFX.I.Enabled = State.SoundOn;
             Haptics.Enabled = State.HapticsOn;
@@ -64,7 +66,7 @@ namespace Sorchemist.Game
                 {
                     if (newGame) Intro();
                     else if (Session.MysteryReady(Now))
-                        Toast("Köye bir Gizemli Kutu geldi! Laboratuvarın yanında seni bekliyor.");
+                        Toast(Loc.T("Köye bir Gizemli Kutu geldi! Laboratuvarın yanında seni bekliyor.", "A Mystery Box has arrived in the village! It is waiting by the lab."));
                 }))
                 if (_isNewGame) Invoke("Intro", 0.3f);
         }
@@ -168,19 +170,19 @@ namespace Sorchemist.Game
             if (ups <= 0) return;
             AudioFX.Play(Sfx.LevelUp);
             FX.I.CrystalRain(Overlay, Theme.Gold, 40);
-            Toast("Seviye " + State.Level + "! Aqualf'in ünü köyde yayılıyor.");
+            Toast(Loc.T("Seviye ", "Level ") + State.Level + Loc.T("! Aqualf'in ünü köyde yayılıyor.", "! Aqualf's fame is spreading through the village."));
         }
 
         void Intro()
         {
-            DialoguePanel.Show(Overlay, "Aqualf", "Fındıkdere'nin Simyacısı", "#3E7CB1", "portrait_aqualf", new[]
+            DialoguePanel.Show(Overlay, "Aqualf", Loc.T("Fındıkdere'nin Simyacısı", "Alchemist of Hazelbrook"), "#3E7CB1", "portrait_aqualf", new[]
             {
-                "Hoş geldin! Ben Aqualf, Fındıkdere köyünün tek simyacısıyım.",
-                "Köylüler dertlerini kapıma getirir, ben de onlara iksir hazırlarım.",
-                "Ama sihrin sırrı kimyadır: ham maddeleri laboratuvarda elementlere ayır, doğru atomları kazana at ve iksirin demlenmesini bekle.",
-                "Köydeki her evin bir seviyesi var. Evleri yükselttikçe yeni deneyler açılır, köy büyür. Ama dikkat: üst seviyeler günler sürer!",
-                "Oyunda kaldıkça altın ve Bilgi Puanı biriktirirsin. Bilgiyle kulemdeki yuvalara pasif özellikler takabilirsin.",
-                "Yanlış karışım mı? Eh... Fail-Dex'e bir sayfa daha! Hadi, haritada gezin ve ünlem işaretli evi bul!"
+                Loc.T("Hoş geldin! Ben Aqualf, Fındıkdere köyünün tek simyacısıyım.", "Welcome! I'm Aqualf, the only alchemist in Hazelbrook village."),
+                Loc.T("Köylüler dertlerini kapıma getirir, ben de onlara iksir hazırlarım.", "The villagers bring their troubles to my door, and I make potions for them."),
+                Loc.T("Ama sihrin sırrı kimyadır: ham maddeleri laboratuvarda elementlere ayır, doğru atomları kazana at ve iksirin demlenmesini bekle.", "But the secret of magic is chemistry: break raw materials down into elements in the lab, put the right atoms in the cauldron and wait for the potion to brew."),
+                Loc.T("Köydeki her evin bir seviyesi var. Evleri yükselttikçe yeni deneyler açılır, köy büyür. Ama dikkat: üst seviyeler günler sürer!", "Every house in the village has a level. Upgrade houses to unlock new experiments and grow the village. But careful: the higher levels take days!"),
+                Loc.T("Oyunda kaldıkça altın ve Bilgi Puanı biriktirirsin. Bilgiyle kulemdeki yuvalara pasif özellikler takabilirsin.", "While you play you collect gold and Knowledge Points. Use Knowledge to put passives into the slots of my tower."),
+                Loc.T("Yanlış karışım mı? Eh... Fail-Dex'e bir sayfa daha! Hadi, haritada gezin ve ünlem işaretli evi bul!", "Wrong mix? Well... one more page for the Fail-Dex! Come on, explore the map and find the house with the exclamation mark!")
             }, null);
         }
 
@@ -202,7 +204,7 @@ namespace Sorchemist.Game
                     {
                         AudioFX.Play(Sfx.LevelUp, 0.7f);
                         if (FX.I != null) FX.I.CrystalRain(Overlay, Theme.Gold, 25);
-                        Toast(BuildingDatabase.NameTr(id) + " Sv." + State.BuildingLevel(id) + " oldu!");
+                        Toast(Loc.T(BuildingDatabase.NameTr(id) + " Sv." + State.BuildingLevel(id) + " oldu!", BuildingDatabase.NameTr(id) + " reached Lv." + State.BuildingLevel(id) + "!"));
                     }
                     if (_screens.ContainsKey(Current)) _screens[Current].Tick();
                 }
@@ -219,6 +221,20 @@ namespace Sorchemist.Game
 
         void OnApplicationPause(bool paused) { if (paused && Session != null) SaveNow(); }
         void OnApplicationQuit() { if (Session != null) SaveNow(); }
+
+        /// <summary>Dili değiştirir ve bütün arayüzü yeni dilde yeniden kurar.</summary>
+        public void SetLanguage(Lang lang)
+        {
+            Loc.Current = lang;
+            State.Language = (int)lang;
+            SaveNow();
+            var old = transform.Find("SorchemistCanvas");
+            if (old != null) { old.name = "OldCanvas"; Destroy(old.gameObject); }
+            _screens.Clear();
+            BuildCanvas();
+            Show(ScreenId.Village);
+            Toast(Loc.T("Dil: Türkçe", "Language: English"));
+        }
 
         public void ResetGame()
         {

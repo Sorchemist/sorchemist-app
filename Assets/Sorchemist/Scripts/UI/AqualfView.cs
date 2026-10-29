@@ -109,36 +109,36 @@ namespace Sorchemist.UI
             switch (v)
             {
                 case FailVisual.HairOnFire:
-                    SetMood(AqualfMood.Singed); Say("Saçım! SAÇIM!");
+                    SetMood(AqualfMood.Singed); Say(Loc.T("Saçım! SAÇIM!", "My hair! MY HAIR!"));
                     _anim = StartCoroutine(HairFire());
                     break;
                 case FailVisual.RoofBlown:
                 case FailVisual.Explosion:
-                    SetMood(AqualfMood.Singed); Say("...Bu planlanmıştı.");
+                    SetMood(AqualfMood.Singed); Say(Loc.T("...Bu planlanmıştı.", "...That was planned."));
                     _beard.color = UIKit.Hex("#555555");
                     if (_useArt) _sprite.color = UIKit.Hex("#9A8F8A");   // isli
                     _anim = StartCoroutine(Jump());
                     break;
                 case FailVisual.Glow:
-                    SetMood(AqualfMood.Glowing); Say("Kendimi... parlak hissediyorum.");
+                    SetMood(AqualfMood.Glowing); Say(Loc.T("Kendimi... parlak hissediyorum.", "I feel... bright."));
                     _beard.color = UIKit.Hex("#9CFF8A");
                     if (_useArt) _sprite.color = UIKit.Hex("#B8FFB0");
                     break;
                 case FailVisual.GoldFlash:
-                    SetMood(AqualfMood.Shocked); Say("ALTIN! ...değilmiş.");
+                    SetMood(AqualfMood.Shocked); Say(Loc.T("ALTIN! ...değilmiş.", "GOLD! ...or not."));
                     _hat.color = Theme.Gold; _beard.color = Theme.Gold;
                     if (_useArt) _sprite.color = UIKit.Hex("#FFE07A");
                     break;
                 case FailVisual.Nothing:
-                    SetMood(AqualfMood.Idle); Say("Soylu ama sıkıcı.");
+                    SetMood(AqualfMood.Idle); Say(Loc.T("Soylu ama sıkıcı.", "Noble but boring."));
                     break;
                 case FailVisual.Smoke:
-                    SetMood(AqualfMood.Singed); Say("*öksürük öksürük*");
+                    SetMood(AqualfMood.Singed); Say(Loc.T("*öksürük öksürük*", "*cough cough*"));
                     _hat.color = UIKit.Hex("#9A9A9A");
                     if (_useArt) _sprite.color = UIKit.Hex("#B0B0B0");
                     break;
                 default:
-                    SetMood(AqualfMood.Shocked); Say("Hmm. Not alındı.");
+                    SetMood(AqualfMood.Shocked); Say(Loc.T("Hmm. Not alındı.", "Hmm. Noted."));
                     break;
             }
         }

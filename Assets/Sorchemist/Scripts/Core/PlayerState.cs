@@ -38,6 +38,7 @@ namespace Sorchemist.Core
         public int Day = 1;
         public string ActiveQuestId;
         public bool SoundOn = true;
+        public int Language;            // 0 = Türkçe, 1 = English
         public bool HapticsOn = true;
         public long MysteryReadyAt;     // Gizemli kutunun açılabileceği zaman (unix sn). 0 = hemen
         public int MysteryOpened;       // Kaç kutu açıldı

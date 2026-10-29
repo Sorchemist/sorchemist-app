@@ -36,8 +36,10 @@ namespace Sorchemist.Core
     {
         public string Id;
         public string Formula;      // Görsel formül, ör. "H2O"
-        public string NameTr;
-        public string FlavorTr;     // Kısa, eğitici açıklama
+        public string NameTr { get { return Loc.Pick(_nameTr, NameEn); } set { _nameTr = value; } }
+        string _nameTr; public string NameEn;
+        public string FlavorTr { get { return Loc.Pick(_flavorTr, FlavorEn); } set { _flavorTr = value; } }     // Kısa, eğitici açıklama
+        string _flavorTr; public string FlavorEn;
         public Dictionary<string, int> Atoms = new Dictionary<string, int>();
         public PotionEffect Effect;
         public HeatLevel MinHeat;
@@ -133,6 +135,13 @@ namespace Sorchemist.Core
         private static void Ensure()
         {
             if (_all != null) return;
+            EnsureData();
+            English.ApplyCompounds(_all);
+        }
+
+        private static void EnsureData()
+        {
+            if (_all != null) return;
             _all = new List<CompoundData>();
             Add("water", "H2O", "Su", PotionEffect.Hydrate, HeatLevel.Cold, HeatLevel.Warm, false, "#5EC8FF", 10,
                 "Hidrojen oksijenle yanınca su oluşur. Hayatın en sade iksiri.");
@@ -172,6 +181,7 @@ namespace Sorchemist.Core
 
         public static string EffectNameTr(PotionEffect e)
         {
+            if (Loc.En) return English.Effect(e);
             switch (e)
             {
                 case PotionEffect.Hydrate: return "Sulama";
@@ -197,6 +207,7 @@ namespace Sorchemist.Core
 
         public static string HeatNameTr(HeatLevel h)
         {
+            if (Loc.En) return English.Heat(h);
             switch (h)
             {
                 case HeatLevel.Cold: return "Soğuk";

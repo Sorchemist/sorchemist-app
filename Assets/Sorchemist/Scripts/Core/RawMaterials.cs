@@ -28,9 +28,12 @@ namespace Sorchemist.Core
     public class RawMaterialData
     {
         public string Id;
-        public string NameTr;
-        public string WhereTr;        // Haritada nerede bulunur
-        public string FlavorTr;
+        public string NameTr { get { return Loc.Pick(_nameTr, NameEn); } set { _nameTr = value; } }
+        string _nameTr; public string NameEn;
+        public string WhereTr { get { return Loc.Pick(_whereTr, WhereEn); } set { _whereTr = value; } }        // Haritada nerede bulunur
+        string _whereTr; public string WhereEn;
+        public string FlavorTr { get { return Loc.Pick(_flavorTr, FlavorEn); } set { _flavorTr = value; } }
+        string _flavorTr; public string FlavorEn;
         public ExtractionMethod Method;
         public List<ElementYield> Yields = new List<ElementYield>();
         public float RegrowSeconds;   // Haritada yeniden belirme süresi
@@ -67,6 +70,13 @@ namespace Sorchemist.Core
         }
 
         private static void Ensure()
+        {
+            if (_all != null) return;
+            EnsureData();
+            English.ApplyRaws(_all);
+        }
+
+        private static void EnsureData()
         {
             if (_all != null) return;
             _all = new List<RawMaterialData>();
@@ -112,6 +122,7 @@ namespace Sorchemist.Core
 
         public static string MethodNameTr(ExtractionMethod m)
         {
+            if (Loc.En) return English.Method(m);
             switch (m)
             {
                 case ExtractionMethod.Evaporation: return "Buharlaştırma";

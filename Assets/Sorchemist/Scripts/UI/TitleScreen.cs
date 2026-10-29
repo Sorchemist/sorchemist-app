@@ -4,6 +4,7 @@
 using System;
 using System.Collections;
 using Sorchemist.Game;
+using Sorchemist.Core;
 using UnityEngine;
 using UnityEngine.UI;
 
@@ -31,7 +32,7 @@ namespace Sorchemist.UI
 
         public static bool Show(RectTransform overlay, Action onPlay)
         {
-            var art = Art.Get("bg_title");
+            var art = Loc.En ? Art.First("bg_title_en", "bg_title") : Art.Get("bg_title");   // İngilizce yazılı kopya
             if (art == null) return false;
             var root = UIKit.Img(overlay, "Title", Color.black);
             UIKit.Stretch(root.rectTransform);
@@ -79,10 +80,10 @@ namespace Sorchemist.UI
                 UIKit.Place(bub.rectTransform, new Vector2(0.15f + i * 0.15f, 0.5f), Vector2.zero, new Vector2(14, 14));
             }
 
-            // "YÜKLENİYOR..." yazısının üstüne durum metni
+            // Loc.T("YÜKLENİYOR...", "LOADING...") yazısının üstüne durum metni
             var labelBg = UIKit.Img(Area(img, "LabelBg", BarLabel), "Bg", UIKit.Hex("#E9D2A6"));
             UIKit.Stretch(labelBg.rectTransform, 10, 6, 10, 6);
-            _label = UIKit.Txt(labelBg.transform, "Label", "YÜKLENİYOR...", 30, UIKit.WoodText, TextAnchor.MiddleCenter, FontStyle.Bold);
+            _label = UIKit.Txt(labelBg.transform, "Label", Loc.T("YÜKLENİYOR...", "LOADING..."), 30, UIKit.WoodText, TextAnchor.MiddleCenter, FontStyle.Bold);
             UIKit.Stretch(_label.rectTransform);
 
             _play = Area(img, "Play", PlayBtn).gameObject.AddComponent<Button>();
@@ -108,7 +109,7 @@ namespace Sorchemist.UI
                 yield return null;
             }
             _ready = true;
-            _label.text = "HAZIR!";
+            _label.text = Loc.T("HAZIR!", "READY!");
             AudioFX.Play(Sfx.Chime, 0.6f);
             if (FX.I != null) FX.I.Pop(_play.transform, 0.15f);
             while (this != null)

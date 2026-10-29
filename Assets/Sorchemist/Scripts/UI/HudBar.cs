@@ -39,10 +39,10 @@ namespace Sorchemist.UI
             UIKit.Stretch(col, 14, top + 10, 14, 14);
             var v = UIKit.VList(col, 14, 0);
             v.childForceExpandHeight = true;
-            AddTab(col, ScreenId.Village, "Köy");
-            AddTab(col, ScreenId.Lab, "Laboratuvar");
+            AddTab(col, ScreenId.Village, Loc.T("Köy", "Village"));
+            AddTab(col, ScreenId.Lab, Loc.T("Laboratuvar", "Laboratory"));
             AddTab(col, ScreenId.FailDex, "Fail-Dex");
-            AddTab(col, ScreenId.Skills, "Pasifler");
+            AddTab(col, ScreenId.Skills, Loc.T("Pasifler", "Passives"));
 
             // ----- Üst çubuk -----
             var bar = UIKit.Img(root, "TopBar", new Color(0.08f, 0.06f, 0.14f, 0.92f));
@@ -77,10 +77,19 @@ namespace Sorchemist.UI
 
                 var dy = Art.Image(bar.transform, "DayFrame", dayArt);
                 var dySize = new Vector2(dayArt.rect.width, dayArt.rect.height);
-                UIKit.Place(dy.rectTransform, new Vector2(1, 0.5f), new Vector2(-170, 0), new Vector2(fh * dySize.x / dySize.y, fh), new Vector2(1, 0.5f));
+                UIKit.Place(dy.rectTransform, new Vector2(1, 0.5f), new Vector2(-24, 0), new Vector2(fh * dySize.x / dySize.y, fh), new Vector2(1, 0.5f));
                 _day = UIKit.Txt(dy.transform, "Day", "", 34, Theme.Text, TextAnchor.MiddleCenter, FontStyle.Bold);
                 UIKit.InFrame(_day.rectTransform, dySize, 285, 40, 435, 135);
                 _dayNumberOnly = true;
+                if (Loc.En)
+                {
+                    // Görseldeki "Gün" yazısının üstüne İngilizce etiket
+                    var patch = UIKit.Img(dy.transform, "DayLabelPatch", UIKit.Hex("#40372E"));
+                    UIKit.InFrame(patch.rectTransform, dySize, 140, 56, 272, 120);
+                    patch.raycastTarget = false;
+                    var dl = UIKit.Txt(patch.transform, "DayLabel", "Day", 30, UIKit.Hex("#C9B49F"), TextAnchor.MiddleCenter, FontStyle.Bold);
+                    UIKit.Stretch(dl.rectTransform);
+                }
             }
             else
             {
@@ -92,14 +101,11 @@ namespace Sorchemist.UI
                 _gold = UIKit.Txt(bar.transform, "Gold", "", 42, Theme.Gold, TextAnchor.MiddleCenter, FontStyle.Bold);
                 UIKit.Place(_gold.rectTransform, new Vector2(0.5f, 0.5f), Vector2.zero, new Vector2(360, 80));
                 _day = UIKit.Txt(bar.transform, "Day", "", 34, Theme.TextDim, TextAnchor.MiddleRight);
-                UIKit.Place(_day.rectTransform, new Vector2(1, 0.5f), new Vector2(-170, 0), new Vector2(220, 60), new Vector2(1, 0.5f));
+                UIKit.Place(_day.rectTransform, new Vector2(1, 0.5f), new Vector2(-24, 0), new Vector2(220, 60), new Vector2(1, 0.5f));
             }
             _xpFill.rectTransform.anchorMin = Vector2.zero; _xpFill.rectTransform.anchorMax = new Vector2(0, 1);
             _xpFill.rectTransform.offsetMin = _xpFill.rectTransform.offsetMax = Vector2.zero;
 
-            var gear = UIKit.Btn(bar.transform, "Settings", "Ayar", Theme.PanelLight, OpenSettings, 30);
-            UIKit.Wood(gear);
-            UIKit.Place((RectTransform)gear.transform, new Vector2(1, 0.5f), new Vector2(-16, 0), new Vector2(140, 80), new Vector2(1, 0.5f));
 
             BuildBurger(root);
             Refresh();
@@ -172,16 +178,16 @@ namespace Sorchemist.UI
             var gm = GameManager.I;
             if (gm == null || gm.Session == null || _gold == null) return;
             var s = gm.State;
-            _gold.text = _dayNumberOnly ? s.Gold.ToString() : s.Gold + " altın";
+            _gold.text = _dayNumberOnly ? s.Gold.ToString() : s.Gold + Loc.T(" altın", " gold");
             if (_points != null)
             {
-                _level.text = "Sv. " + s.Level;
-                _points.text = "<color=#9EE6FF>" + s.Knowledge + " Bilgi</color>  " + s.Xp + "/" + PlayerState.XpToNext(s.Level) + " XP";
+                _level.text = Loc.T("Sv. ", "Lv. ") + s.Level;
+                _points.text = "<color=#9EE6FF>" + s.Knowledge + Loc.T(" Bilgi</color>  ", " Knowledge</color>  ") + s.Xp + "/" + PlayerState.XpToNext(s.Level) + " XP";
                 _points.resizeTextForBestFit = true; _points.resizeTextMinSize = 12; _points.resizeTextMaxSize = 24;
             }
             else
-                _level.text = "Seviye " + s.Level + "  <color=#9EE6FF>" + s.Knowledge + " Bilgi</color>";
-            _day.text = _dayNumberOnly ? s.Day.ToString() : "Gün " + s.Day;
+                _level.text = Loc.T("Seviye ", "Level ") + s.Level + Loc.T("  <color=#9EE6FF>", "  <color=#9EE6FF>") + s.Knowledge + Loc.T(" Bilgi</color>", " Knowledge</color>");
+            _day.text = _dayNumberOnly ? s.Day.ToString() : Loc.T("Gün ", "Day ") + s.Day;
             _xpFill.rectTransform.anchorMax = new Vector2(Mathf.Clamp01((float)s.Xp / PlayerState.XpToNext(s.Level)), 1);
         }
 
@@ -189,38 +195,66 @@ namespace Sorchemist.UI
         {
             var gm = GameManager.I;
             RectTransform body;
-            var modal = UIKit.Modal(gm.Overlay, "Ayarlar", out body, 900, 1000);
-            UIKit.VList(body, 24, 10);
+            var modal = UIKit.Modal(gm.Overlay, Loc.T("Ayarlar", "Settings"), out body, 940, 1100);
+            UIKit.VList(body, 18, 6);
+
+            // ----- Dil seçimi -----
+            var langTitle = UIKit.Txt(body, "LangTitle", "<b>Dil / Language</b>", 32, Theme.Accent);
+            UIKit.LE(langTitle, 44);
+            var langRow = UIKit.Rect("LangRow", body);
+            UIKit.LE(langRow, 96);
+            UIKit.HList(langRow, 18);
+            LangButton(langRow, "Türkçe", Lang.Tr, modal);
+            LangButton(langRow, "English", Lang.En, modal);
+
             Button sound = null, haptic = null;
             sound = UIKit.Btn(body, "Sound", "", Theme.PanelLight, () =>
             {
                 gm.State.SoundOn = !gm.State.SoundOn; AudioFX.I.Enabled = gm.State.SoundOn;
-                UIKit.LabelOf(sound).text = "Ses: " + (gm.State.SoundOn ? "Açık" : "Kapalı"); gm.SaveNow();
+                UIKit.LabelOf(sound).text = SoundLabel(gm.State.SoundOn); gm.SaveNow();
             });
-            UIKit.LabelOf(sound).text = "Ses: " + (gm.State.SoundOn ? "Açık" : "Kapalı");
-            UIKit.LE(sound, 100);
+            UIKit.LabelOf(sound).text = SoundLabel(gm.State.SoundOn);
+            UIKit.LE(sound, 90);
             haptic = UIKit.Btn(body, "Haptic", "", Theme.PanelLight, () =>
             {
                 gm.State.HapticsOn = !gm.State.HapticsOn; Haptics.Enabled = gm.State.HapticsOn;
-                UIKit.LabelOf(haptic).text = "Titreşim: " + (gm.State.HapticsOn ? "Açık" : "Kapalı"); gm.SaveNow();
+                UIKit.LabelOf(haptic).text = HapticLabel(gm.State.HapticsOn); gm.SaveNow();
             });
-            UIKit.LabelOf(haptic).text = "Titreşim: " + (gm.State.HapticsOn ? "Açık" : "Kapalı");
-            UIKit.LE(haptic, 100);
+            UIKit.LabelOf(haptic).text = HapticLabel(gm.State.HapticsOn);
+            UIKit.LE(haptic, 90);
 
-            var about = UIKit.Txt(body, "About",
-                "Sorchemist v0.1 (prototip)\nAqualf ve Fındıkdere köyü\n@sorchemist\n\nKimya gerçek, büyü biraz abartılı.", 32, Theme.TextDim);
-            UIKit.LE(about, 200);
+            var about = UIKit.Txt(body, "About", Loc.T(
+                "Sorchemist v0.2 (prototip) · Aqualf ve Fındıkdere köyü · @sorchemist\nKimya gerçek, büyü biraz abartılı.",
+                "Sorchemist v0.2 (prototype) · Aqualf and Hazelbrook village · @sorchemist\nThe chemistry is real, the magic a little exaggerated."), 26, Theme.TextDim);
+            UIKit.LE(about, 90);
 
             Button reset = null;
             bool armed = false;
-            reset = UIKit.Btn(body, "Reset", "Kaydı Sıfırla", Theme.Danger, () =>
+            reset = UIKit.Btn(body, "Reset", Loc.T("Kaydı Sıfırla", "Reset Save"), Theme.Danger, () =>
             {
-                if (!armed) { armed = true; UIKit.LabelOf(reset).text = "Emin misin? Tekrar dokun"; return; }
+                if (!armed) { armed = true; UIKit.LabelOf(reset).text = Loc.T("Emin misin? Tekrar dokun", "Are you sure? Tap again"); return; }
                 gm.ResetGame();
             });
-            UIKit.LE(reset, 100);
-            var close = UIKit.Btn(body, "Close", "Kapat", Theme.Magic, () => Destroy(modal.gameObject));
-            UIKit.LE(close, 100);
+            UIKit.LE(reset, 90);
+            var close = UIKit.Btn(body, "Close", Loc.T("Kapat", "Close"), Theme.Magic, () => Destroy(modal.gameObject));
+            UIKit.LE(close, 90);
+        }
+
+        static string OnOff(bool on) { return on ? Loc.T("Açık", "On") : Loc.T("Kapalı", "Off"); }
+        static string SoundLabel(bool on) { return Loc.T("Ses: ", "Sound: ") + OnOff(on); }
+        static string HapticLabel(bool on) { return Loc.T("Titreşim: ", "Vibration: ") + OnOff(on); }
+
+        static void LangButton(RectTransform row, string label, Lang lang, RectTransform modal)
+        {
+            bool active = Loc.Current == lang;
+            var b = UIKit.Btn(row, "Lang_" + lang, (active ? "● " : "") + label, active ? Theme.Accent * 0.7f + Color.black * 0.3f : Theme.PanelLight, () =>
+            {
+                if (Loc.Current == lang) return;
+                AudioFX.Play(Sfx.Chime, 0.6f);
+                Destroy(modal.gameObject);
+                GameManager.I.SetLanguage(lang);
+            }, 34);
+            UIKit.LE(b, -1, -1, 1);
         }
     }
 }

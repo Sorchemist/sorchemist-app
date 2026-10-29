@@ -3,6 +3,7 @@
 // adıyla koyman yeterli: oyun onu otomatik kullanır. Dosya yoksa kodla çizilen
 // yer tutucuya döner. Tüm anahtarların listesi: ASSET_LISTESI.md
 using System.Collections.Generic;
+using Sorchemist.Core;
 using UnityEngine;
 using UnityEngine.UI;
 
@@ -17,6 +18,12 @@ namespace Sorchemist.UI
         public static Sprite Get(string key)
         {
             if (string.IsNullOrEmpty(key)) return null;
+            // İngilizcede element ikonlarının İngilizce yazılı kopyası (el_8_en) varsa onu kullan
+            if (Loc.En && key.StartsWith("el_") && !key.EndsWith("_en"))
+            {
+                var en = Get(key + "_en");
+                if (en != null) return en;
+            }
             Sprite s;
             if (Cache.TryGetValue(key, out s)) return s;
 

@@ -80,11 +80,11 @@ namespace Sorchemist.Game
 
 #if SORCHEMIST_NATIVESHARE
             new NativeShare().AddFile(path).SetSubject("Sorchemist").SetText(full).Share();
-            if (onDone != null) onDone("Paylaşım menüsü açıldı!");
+            if (onDone != null) onDone(Loc.T("Paylaşım menüsü açıldı!", "Share menu opened!"));
 #else
             GUIUtility.systemCopyBuffer = full;
             Debug.Log("[Sorchemist] Ekran görüntüsü kaydedildi: " + path);
-            if (onDone != null) onDone("Görüntü kaydedildi, metin panoya kopyalandı.\n(Paylaşım menüsü için NativeShare'i kur)");
+            if (onDone != null) onDone(Loc.T("Görüntü kaydedildi, metin panoya kopyalandı.\n(Paylaşım menüsü için NativeShare'i kur)", "Screenshot saved, text copied to clipboard.\n(Install NativeShare for the share menu)"));
 #endif
         }
     }

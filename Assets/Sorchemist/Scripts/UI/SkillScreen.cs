@@ -43,9 +43,9 @@ namespace Sorchemist.UI
 
         public override void Refresh()
         {
-            _header.text = "Bilgi Puanı: " + State.Knowledge +
-                "   <size=26><color=#A99FC9>(dakikada +" + Session.KnowledgePerMinute.ToString("0.#") +
-                " · yeni element, iksir ve Fail-Dex sayfaları da Bilgi verir)</color></size>";
+            _header.text = Loc.T("Bilgi Puanı: ", "Knowledge: ") + State.Knowledge +
+                Loc.T("   <size=26><color=#A99FC9>(dakikada +", "   <size=26><color=#A99FC9>(+") + Session.KnowledgePerMinute.ToString("0.#") +
+                Loc.T(" · yeni element, iksir ve Fail-Dex sayfaları da Bilgi verir)</color></size>", "/min · new elements, potions and Fail-Dex pages also give Knowledge)</color></size>");
 
             // ----- Yuvalar -----
             UIKit.Clear(_slots);
@@ -59,11 +59,11 @@ namespace Sorchemist.UI
                 if (!open)
                 {
                     int need = 1; while (BuildingDatabase.PassiveSlots(need) <= i) need++;
-                    label = "<size=24><color=#4A3420>Kilitli yuva\nKule Sv." + need + "</color></size>";
+                    label = Loc.T("<size=24><color=#4A3420>Kilitli yuva\nKule Sv.", "<size=24><color=#4A3420>Locked slot\nTower Lv.") + need + "</color></size>";
                     bg = UIKit.Hex("#1F1936");
                 }
-                else if (p != null) { label = "<b>" + p.NameTr + "</b>\n<size=22>Çıkarmak için dokun</size>"; bg = Theme.Magic; }
-                else { label = "<size=26>Boş yuva</size>\n<size=20>Aşağıdan bir pasif tak</size>"; bg = Theme.PanelLight; }
+                else if (p != null) { label = "<b>" + p.NameTr + Loc.T("</b>\n<size=22>Çıkarmak için dokun</size>", "</b>\n<size=22>Tap to remove</size>"); bg = Theme.Magic; }
+                else { label = Loc.T("<size=26>Boş yuva</size>\n<size=20>Aşağıdan bir pasif tak</size>", "<size=26>Empty slot</size>\n<size=20>Equip a passive below</size>"); bg = Theme.PanelLight; }
                 var b = UIKit.Btn(_slots, "Slot" + i, label, bg, () =>
                 {
                     if (p == null) return;
@@ -89,10 +89,10 @@ namespace Sorchemist.UI
                 bool owned = State.OwnedPassives.Contains(p.Id);
                 bool equipped = State.HasPassive(p.Id);
                 string why = owned ? null : Session.CanBuyPassive(p.Id);
-                string status = equipped ? "<color=#1E8A4A>TAKILI</color>"
-                    : owned ? "<color=#2A6FB0>Sende · takmak için dokun</color>"
-                    : why == null ? "<color=#9A5B00>Aç: " + p.Cost + " Bilgi</color>"
-                    : "<color=#6B5A4A>" + p.Cost + " Bilgi gerekli</color>";
+                string status = equipped ? Loc.T("<color=#1E8A4A>TAKILI</color>", "<color=#1E8A4A>EQUIPPED</color>")
+                    : owned ? Loc.T("<color=#2A6FB0>Sende · takmak için dokun</color>", "<color=#2A6FB0>Owned · tap to equip</color>")
+                    : why == null ? Loc.T("<color=#9A5B00>Aç: ", "<color=#9A5B00>Unlock: ") + p.Cost + Loc.T(" Bilgi</color>", " Knowledge</color>")
+                    : "<color=#6B5A4A>" + p.Cost + Loc.T(" Bilgi gerekli</color>", " Knowledge needed</color>");
                 if (!parch) status = status.Replace("#1E8A4A", "#7CF2C8").Replace("#2A6FB0", "#9EE6FF").Replace("#9A5B00", "#FFD166").Replace("#6B5A4A", "#A99FC9");
                 var card = UIKit.Btn(_list, p.Id,
                     "<b>" + p.NameTr + "</b>\n<size=24>" + p.DescriptionTr + "</size>\n<size=26>" + status + "</size>",
@@ -137,7 +137,7 @@ namespace Sorchemist.UI
             Session.BuyPassive(p.Id);
             AudioFX.Play(Sfx.LevelUp, 0.8f);
             if (FX.I != null) FX.I.Burst(G.Overlay, Theme.Magic, Vector2.zero, 40, 900);
-            G.Toast(p.NameTr + " açıldı!" + (State.HasPassive(p.Id) ? " Yuvaya takıldı." : " Boş yuva yok, bir pasifi çıkarıp takabilirsin."));
+            G.Toast(p.NameTr + Loc.T(" açıldı!", " unlocked!") + (State.HasPassive(p.Id) ? Loc.T(" Yuvaya takıldı.", " Equipped in a slot.") : Loc.T(" Boş yuva yok, bir pasifi çıkarıp takabilirsin.", " No free slot - remove a passive to equip it.")));
             Refresh();
         }
     }

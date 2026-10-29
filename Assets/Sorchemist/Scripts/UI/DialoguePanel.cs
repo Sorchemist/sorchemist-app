@@ -2,6 +2,7 @@
 using System;
 using System.Collections;
 using Sorchemist.Game;
+using Sorchemist.Core;
 using UnityEngine;
 using UnityEngine.UI;
 
@@ -139,11 +140,11 @@ namespace Sorchemist.UI
             bool last = _index >= _lines.Length - 1;
             if (!last)
             {
-                ChoiceBtn("Devam  >", Theme.PanelLight, Next);
+                ChoiceBtn(Loc.T("Devam  >", "Next  >"), Theme.PanelLight, Next);
             }
             else if (_choiceData == null || _choiceData.Length == 0)
             {
-                ChoiceBtn("Tamam", Theme.Magic, Close);
+                ChoiceBtn(Loc.T("Tamam", "OK"), Theme.Magic, Close);
             }
             else
             {

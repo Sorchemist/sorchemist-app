@@ -24,7 +24,8 @@ namespace Sorchemist.Core
     {
         public int Number;
         public string Symbol;
-        public string NameTr;
+        public string NameTr { get { return Loc.Pick(_nameTr, NameEn); } set { _nameTr = value; } }
+        string _nameTr; public string NameEn;
         public float Mass;
         public ElementCategory Category;
         public int Period;      // 1-7
@@ -87,6 +88,13 @@ namespace Sorchemist.Core
         }
 
         private static void Ensure()
+        {
+            if (_all != null) return;
+            EnsureData();
+            English.ApplyElements(_all);
+        }
+
+        private static void EnsureData()
         {
             if (_all != null) return;
             _all = new List<ElementData>(Count);
@@ -166,6 +174,7 @@ namespace Sorchemist.Core
 
         public static string CategoryNameTr(ElementCategory c)
         {
+            if (Loc.En) return English.Category(c);
             switch (c)
             {
                 case ElementCategory.Nonmetal: return "Ametal";

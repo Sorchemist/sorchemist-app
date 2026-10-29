@@ -47,10 +47,10 @@ namespace Sorchemist.UI
         {
             switch (r)
             {
-                case FailRarity.Rare: return "Nadir";
-                case FailRarity.Epic: return "Epik";
-                case FailRarity.Legendary: return "Efsanevi";
-                default: return "Sıradan";
+                case FailRarity.Rare: return Loc.T("Nadir", "Rare");
+                case FailRarity.Epic: return Loc.T("Epik", "Epic");
+                case FailRarity.Legendary: return Loc.T("Efsanevi", "Legendary");
+                default: return Loc.T("Sıradan", "Common");
             }
         }
 
@@ -108,15 +108,15 @@ namespace Sorchemist.UI
             {
                 var sp = UIKit.Panel(content, "Science", new Color(0.35f, 0.22f, 0.1f, 0.18f));
                 UIKit.LE(sp, 160);
-                var st = UIKit.Txt(sp.transform, "T", "<b>Bilim köşesi:</b> " + science, 26, UIKit.Hex("#2E5E4E"), TextAnchor.MiddleLeft);
+                var st = UIKit.Txt(sp.transform, "T", Loc.T("<b>Bilim köşesi:</b> ", "<b>Science corner:</b> ") + science, 26, UIKit.Hex("#2E5E4E"), TextAnchor.MiddleLeft);
                 UIKit.Stretch(st.rectTransform, 18, 10, 18, 10);
             }
             UIKit.LE(UIKit.Txt(content, "Brand", "SORCHEMIST  •  @sorchemist", 22, UIKit.Hex("#8B6B4A"), TextAnchor.MiddleLeft, FontStyle.Bold), 30);
 
             var buttons = UIKit.InFrame(UIKit.Rect("Buttons", card.transform), fs, 95, 400, 380, 620);
             var bv = UIKit.VList(buttons, 14, 0); bv.childForceExpandHeight = false;
-            UIKit.LE(UIKit.Wood(UIKit.Btn(buttons, "Share", "Paylaş", Color.white, () => gm.Share(shareText), 34), null, UIKit.Hex("#FFC2D6")), 90);
-            UIKit.LE(UIKit.Wood(UIKit.Btn(buttons, "Ok", "Tamam", Color.white, () =>
+            UIKit.LE(UIKit.Wood(UIKit.Btn(buttons, "Share", Loc.T("Paylaş", "Share"), Color.white, () => gm.Share(shareText), 34), null, UIKit.Hex("#FFC2D6")), 90);
+            UIKit.LE(UIKit.Wood(UIKit.Btn(buttons, "Ok", Loc.T("Tamam", "OK"), Color.white, () =>
             {
                 UnityEngine.Object.Destroy(dim.gameObject);
                 if (onClose != null) onClose();
@@ -138,14 +138,14 @@ namespace Sorchemist.UI
             {
                 var sp = UIKit.Panel(content, "Science", Theme.PanelLight);
                 UIKit.LE(sp, 190);
-                var st = UIKit.Txt(sp.transform, "T", "<b>Bilim köşesi:</b>\n" + science, 32, Theme.Accent);
+                var st = UIKit.Txt(sp.transform, "T", Loc.T("<b>Bilim köşesi:</b>\n", "<b>Science corner:</b>\n") + science, 32, Theme.Accent);
                 UIKit.Stretch(st.rectTransform, 24, 16, 24, 16);
             }
             var row = UIKit.Rect("Row", content);
             UIKit.LE(row, 120);
             UIKit.HList(row, 20);
-            UIKit.Btn(row, "Share", "Paylaş", UIKit.Hex("#E1306C"), () => gm.Share(shareText));
-            UIKit.Btn(row, "Ok", "Tamam", Theme.Magic, () =>
+            UIKit.Btn(row, "Share", Loc.T("Paylaş", "Share"), UIKit.Hex("#E1306C"), () => gm.Share(shareText));
+            UIKit.Btn(row, "Ok", Loc.T("Tamam", "OK"), Theme.Magic, () =>
             {
                 UnityEngine.Object.Destroy(modal.gameObject);
                 if (onClose != null) onClose();
@@ -159,7 +159,7 @@ namespace Sorchemist.UI
         {
             var gm = GameManager.I;
             RectTransform body;
-            var modal = UIKit.Modal(gm.Overlay, "Hangi iksiri vereceksin?", out body, 900, 1200);
+            var modal = UIKit.Modal(gm.Overlay, Loc.T("Hangi iksiri vereceksin?", "Which potion will you give?"), out body, 900, 1200);
             RectTransform list;
             var sr = UIKit.Scroll(body, "Scroll", true, false, out list);
             UIKit.Stretch((RectTransform)sr.transform, 0, 0, 0, 130);
@@ -173,7 +173,7 @@ namespace Sorchemist.UI
                 any = true;
                 string id = st.Id;
                 var b = UIKit.Btn(list, "P_" + id,
-                    c.NameTr + " (" + c.Formula + ")  x" + st.Count + "\n<size=28><color=#A99FC9>Etki: " +
+                    c.NameTr + " (" + c.Formula + ")  x" + st.Count + Loc.T("\n<size=28><color=#A99FC9>Etki: ", "\n<size=28><color=#A99FC9>Effect: ") +
                     CompoundDatabase.EffectNameTr(c.Effect) + "</color></size>",
                     Theme.PanelLight, () => { UnityEngine.Object.Destroy(modal.gameObject); onPick(id); }, 36);
                 UIKit.LE(b, 120);
@@ -182,10 +182,10 @@ namespace Sorchemist.UI
             }
             if (!any)
             {
-                var t = UIKit.Txt(list, "Empty", "Hiç iksirin yok!\nLaboratuvara gidip bir şeyler pişir.", 38, Theme.TextDim);
+                var t = UIKit.Txt(list, "Empty", Loc.T("Hiç iksirin yok!\nLaboratuvara gidip bir şeyler pişir.", "You have no potions!\nGo to the lab and brew something."), 38, Theme.TextDim);
                 UIKit.LE(t, 300);
             }
-            var close = UIKit.Btn(body, "Close", "Vazgeç", Theme.Danger, () => UnityEngine.Object.Destroy(modal.gameObject));
+            var close = UIKit.Btn(body, "Close", Loc.T("Vazgeç", "Cancel"), Theme.Danger, () => UnityEngine.Object.Destroy(modal.gameObject));
             UIKit.Place((RectTransform)close.transform, new Vector2(0.5f, 0), new Vector2(0, 50), new Vector2(460, 100));
         }
     }

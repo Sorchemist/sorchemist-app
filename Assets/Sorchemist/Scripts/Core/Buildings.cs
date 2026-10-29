@@ -89,9 +89,10 @@ namespace Sorchemist.Core
 
         public static string NameTr(string id)
         {
-            if (id == Tower) return "Aqualf'in Kulesi";
+            if (id == Tower) return Loc.T("Aqualf'in Kulesi", "Aqualf's Tower");
             var v = VillageDatabase.GetVillager(id);
-            return v != null ? v.RoleTr + " Evi" : id;
+            if (v == null) return id;
+            return Loc.En ? v.RoleTr + "'s House" : v.RoleTr + " Evi";
         }
 
         // ----- Kule seviyesinin etkileri -----
@@ -101,12 +102,13 @@ namespace Sorchemist.Core
 
         public static string FormatDuration(long seconds)
         {
-            if (seconds <= 0) return "0 sn";
+            string D = Loc.T(" gün", "d"), H = Loc.T(" sa", "h"), M = Loc.T(" dk", "m"), S = Loc.T(" sn", "s");
+            if (seconds <= 0) return "0" + S;
             long d = seconds / 86400, h = seconds % 86400 / 3600, m = seconds % 3600 / 60, s = seconds % 60;
-            if (d > 0) return d + " gün" + (h > 0 ? " " + h + " sa" : "");
-            if (h > 0) return h + " sa" + (m > 0 ? " " + m + " dk" : "");
-            if (m > 0) return m + " dk" + (s > 0 ? " " + s + " sn" : "");
-            return s + " sn";
+            if (d > 0) return d + D + (h > 0 ? " " + h + H : "");
+            if (h > 0) return h + H + (m > 0 ? " " + m + M : "");
+            if (m > 0) return m + M + (s > 0 ? " " + s + S : "");
+            return s + S;
         }
     }
 }

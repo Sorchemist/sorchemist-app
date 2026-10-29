@@ -9,8 +9,10 @@ namespace Sorchemist.Core
     public class PassiveData
     {
         public string Id;
-        public string NameTr;
-        public string DescriptionTr;
+        public string NameTr { get { return Loc.Pick(_nameTr, NameEn); } set { _nameTr = value; } }
+        string _nameTr; public string NameEn;
+        public string DescriptionTr { get { return Loc.Pick(_descriptionTr, DescriptionEn); } set { _descriptionTr = value; } }
+        string _descriptionTr; public string DescriptionEn;
         public int Cost;          // Bilgi Puanı
         public string Icon;       // Sanat anahtarı (ör. el_79)
     }
@@ -38,6 +40,13 @@ namespace Sorchemist.Core
         }
 
         static void Ensure()
+        {
+            if (_all != null) return;
+            EnsureData();
+            English.ApplyPassives(_all);
+        }
+
+        static void EnsureData()
         {
             if (_all != null) return;
             _all = new List<PassiveData>();

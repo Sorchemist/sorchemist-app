@@ -82,6 +82,22 @@ static class CoreTests
         g.Unequip(PassiveDatabase.CopperPot);
         Check(g.Equip(PassiveDatabase.Owl) == null && g.State.HasPassive(PassiveDatabase.Owl), "Çıkar-tak çalışır");
 
+        Console.WriteLine("Dil (İngilizce)");
+        Loc.Current = Lang.En;
+        Check(ElementDatabase.Get("Fe").NameTr == "Iron" && CompoundDatabase.Get("salt").NameTr == "Table Salt", "Element ve bileşik adları İngilizce");
+        Check(VillageDatabase.GetVillager("bal").RoleTr == "Baker" && VillageDatabase.GetQuest("q_thirst").DialogueTr[0].StartsWith("Aqualf!"), "Köylü ve görev metinleri İngilizce");
+        Check(FailDexDatabase.Get("midas").TitleTr == "Midas Cauldron" && PassiveDatabase.Get(PassiveDatabase.Owl).NameTr == "Wise Owl", "Fail-Dex ve pasifler İngilizce");
+        Check(AlchemyNames.Name(1) == "Pure Dew Essence" && BuildingDatabase.NameTr("tower") == "Aqualf's Tower", "Simya adları ve binalar İngilizce");
+        bool allEn = true;
+        foreach (var v in VillageDatabase.Villagers) if (v.NameEn == null) allEn = false;
+        foreach (var q in VillageDatabase.Quests) if (q.DialogueEn == null) allEn = false;
+        foreach (var c in CompoundDatabase.All) if (c.NameEn == null) allEn = false;
+        foreach (var f in FailDexDatabase.All) if (f.TitleEn == null) allEn = false;
+        foreach (var r in RawMaterialDatabase.All) if (r.NameEn == null) allEn = false;
+        Check(allEn && English.Alchemy.Length == 118, "Bütün kayıtların İngilizcesi var");
+        Loc.Current = Lang.Tr;
+        Check(ElementDatabase.Get("Fe").NameTr == "Demir", "Türkçeye geri dönüş");
+
         Console.WriteLine(_fail == 0 ? "\nTÜM TESTLER GEÇTİ" : "\n" + _fail + " TEST BAŞARISIZ");
         return _fail == 0 ? 0 : 1;
     }

@@ -36,7 +36,7 @@ namespace Sorchemist.Core
             int total = atoms.Values.Sum();
 
             if (total == 0)
-                return new BrewResult { MessageTr = "Kazan boş. Aqualf boş kazanı karıştırarak meditasyon yaptı." };
+                return new BrewResult { MessageTr = Loc.T("Kazan boş. Aqualf boş kazanı karıştırarak meditasyon yaptı.", "The cauldron is empty. Aqualf meditated by stirring an empty pot.") };
 
             if (total > input.CauldronCapacity)
                 return FailWith("overflow", null);
@@ -56,21 +56,21 @@ namespace Sorchemist.Core
 
             if (heat > max)
             {
-                if (c.Id == "peroxide") return FailWith("peroxide_foam", "Hidrojen peroksit ısıya dayanamaz: soğuk tut!");
-                if (input.Heat == HeatLevel.Inferno) return FailWith("roof_blown", c.NameTr + " için fazla sıcak. İdeal: " + Range(c));
-                return FailWith("burnt", c.NameTr + " için fazla sıcak. İdeal: " + Range(c));
+                if (c.Id == "peroxide") return FailWith("peroxide_foam", Loc.T("Hidrojen peroksit ısıya dayanamaz: soğuk tut!", "Hydrogen peroxide can't take heat: keep it cold!"));
+                if (input.Heat == HeatLevel.Inferno) return FailWith("roof_blown", Loc.T(c.NameTr + " için fazla sıcak. İdeal: ", "Too hot for " + c.NameTr + ". Ideal: ") + Range(c));
+                return FailWith("burnt", Loc.T(c.NameTr + " için fazla sıcak. İdeal: ", "Too hot for " + c.NameTr + ". Ideal: ") + Range(c));
             }
             if (heat < min)
-                return FailWith("lukewarm_sludge", c.NameTr + " için daha fazla ısı gerek. İdeal: " + Range(c));
+                return FailWith("lukewarm_sludge", Loc.T(c.NameTr + " için daha fazla ısı gerek. İdeal: ", c.NameTr + " needs more heat. Ideal: ") + Range(c));
             if (c.NeedsStir && input.StirQuality < 0.5f)
-                return FailWith("lumpy", c.NameTr + " iyice karıştırılmalı!");
+                return FailWith("lumpy", Loc.T(c.NameTr + " iyice karıştırılmalı!", c.NameTr + " must be stirred well!"));
 
             return new BrewResult
             {
                 Success = true,
                 Compound = c,
                 Xp = c.Xp,
-                MessageTr = c.NameTr + " (" + c.Formula + ") oluştu! " + c.FlavorTr
+                MessageTr = c.NameTr + " (" + c.Formula + ")" + Loc.T(" oluştu! ", " formed! ") + c.FlavorTr
             };
         }
 
@@ -81,20 +81,20 @@ namespace Sorchemist.Core
             bool onlyNoble = atoms.Keys.All(k => Noble.Contains(k));
             int heat = (int)input.Heat;
 
-            if (n("Au") > 0) return FailWith("midas", "Altın çok soy bir metaldir; neredeyse hiçbir şeyle tepkimeye girmez.");
-            if (Hot.Any(r => n(r) > 0)) return FailWith("glow_beard", "Radyoaktif elementlerle oynama!");
-            if (n("Hg") > 0) return FailWith("mercury_hat", "Cıva güzel ama tehlikeli.");
-            if (onlyNoble) return FailWith("noble_snub", "Soy gazlar tepkimeye girmez.");
-            if (hasAlkali && n("H") >= 2 && n("O") >= 1) return FailWith("alkali_boom", "Alkali metal + su = tehlike!");
-            if (n("Mg") > 0 && input.Heat == HeatLevel.Inferno) return FailWith("blinding_flash", "Magnezyum oksit için 1 Mg + 1 O dene.");
-            if (n("Cl") >= 1 && n("Na") == 0 && n("H") == 0) return FailWith("green_cloud", "Klor bir eş arıyor: Na veya H.");
+            if (n("Au") > 0) return FailWith("midas", Loc.T("Altın çok soy bir metaldir; neredeyse hiçbir şeyle tepkimeye girmez.", "Gold is a very noble metal; it reacts with almost nothing."));
+            if (Hot.Any(r => n(r) > 0)) return FailWith("glow_beard", Loc.T("Radyoaktif elementlerle oynama!", "Don't play with radioactive elements!"));
+            if (n("Hg") > 0) return FailWith("mercury_hat", Loc.T("Cıva güzel ama tehlikeli.", "Mercury is pretty but dangerous."));
+            if (onlyNoble) return FailWith("noble_snub", Loc.T("Soy gazlar tepkimeye girmez.", "Noble gases don't react."));
+            if (hasAlkali && n("H") >= 2 && n("O") >= 1) return FailWith("alkali_boom", Loc.T("Alkali metal + su = tehlike!", "Alkali metal + water = danger!"));
+            if (n("Mg") > 0 && input.Heat == HeatLevel.Inferno) return FailWith("blinding_flash", Loc.T("Magnezyum oksit için 1 Mg + 1 O dene.", "For magnesium oxide try 1 Mg + 1 O."));
+            if (n("Cl") >= 1 && n("Na") == 0 && n("H") == 0) return FailWith("green_cloud", Loc.T("Klor bir eş arıyor: Na veya H.", "Chlorine is looking for a partner: Na or H."));
             if (n("S") > 0 && heat >= (int)HeatLevel.Hot) return FailWith("rotten_egg", null);
             if (n("H") > 0 && n("O") > 0 && heat >= (int)HeatLevel.Hot && atoms.Count == 2)
-                return FailWith("hydrogen_pop", "Su için tam olarak 2 H ve 1 O gerekir.");
+                return FailWith("hydrogen_pop", Loc.T("Su için tam olarak 2 H ve 1 O gerekir.", "Water needs exactly 2 H and 1 O."));
 
             var near = FindNearMiss(atoms);
             if (near != null)
-                return FailWith("near_miss", "Bu karışım " + near.NameTr + " (" + near.Formula + ") bileşiğine çok benziyor...");
+                return FailWith("near_miss", Loc.T("Bu karışım " + near.NameTr + " (" + near.Formula + ") bileşiğine çok benziyor...", "This mix looks a lot like " + near.NameTr + " (" + near.Formula + ")..."));
 
             return FailWith("mystery_goo", null);
         }
@@ -134,7 +134,7 @@ namespace Sorchemist.Core
                 Success = false,
                 Fail = f,
                 Xp = f != null ? f.Xp : 0,
-                MessageTr = f != null ? f.TitleTr + "! " + f.DescriptionTr : "Bir şeyler ters gitti.",
+                MessageTr = f != null ? f.TitleTr + "! " + f.DescriptionTr : Loc.T("Bir şeyler ters gitti.", "Something went wrong."),
                 HintTr = hint
             };
         }

@@ -127,7 +127,8 @@ namespace Sorchemist.Core
             "Sonuncu Küre (Hiçlik Gazı)|Periyodik kitabın son sayfası; gaz olması gerekirken katı bir yıldız gibi parlayan nihai simya özü"
         };
 
-        public static string Name(int z) { return z >= 1 && z <= Data.Length ? Data[z - 1].Split('|')[0] : ""; }
-        public static string Lore(int z) { return z >= 1 && z <= Data.Length ? Data[z - 1].Split('|')[1] : ""; }
+        static string[] Src { get { return Loc.En ? English.Alchemy : Data; } }
+        public static string Name(int z) { return z >= 1 && z <= Src.Length ? Src[z - 1].Split('|')[0] : ""; }
+        public static string Lore(int z) { return z >= 1 && z <= Src.Length ? Src[z - 1].Split('|')[1] : ""; }
     }
 }

@@ -213,9 +213,17 @@ namespace Sorchemist.UI
             UIKit.Place(_questBanner, new Vector2(0.5f, 1), new Vector2(0, -70), new Vector2(1000, 110));
             _questText = UIKit.LabelOf(banner);
 
-            var hint = UIKit.Txt(Root, "Hint", "Haritada gezin • Evlere dokun: yükselt, sohbet et • Gizemli Kutu'yu kaçırma", 26, new Color(1, 1, 1, 0.75f));
+            var hint = UIKit.Txt(Root, "Hint", Loc.T("Haritada gezin • Evlere dokun: yükselt, sohbet et • Gizemli Kutu'yu kaçırma", "Explore the map • Tap houses to upgrade or chat • Don't miss the Mystery Box"), 26, new Color(1, 1, 1, 0.75f));
             hint.gameObject.AddComponent<Outline>().effectColor = new Color(0, 0, 0, 0.7f);
             UIKit.Place(hint.rectTransform, new Vector2(0.5f, 0), new Vector2(0, 26), new Vector2(1400, 44));
+
+            // Ayarlar (sağ üst köşe): ses, titreşim, dil seçimi
+            var set = UIKit.Wood(UIKit.Btn(Root, "SettingsButton", Loc.T("Ayarlar", "Settings"), Theme.PanelLight, () =>
+            {
+                AudioFX.Play(Sfx.Click);
+                HudBar.OpenSettings();
+            }, 30));
+            UIKit.Place((RectTransform)set.transform, new Vector2(1, 1), new Vector2(-20, -20), new Vector2(230, 96), new Vector2(1, 1));
         }
 
         // Nesne kökü: alt orta noktası karonun üst yüz merkezinin biraz önünde
@@ -296,7 +304,7 @@ namespace Sorchemist.UI
             var lvl = rt.Find("Plate/Level");
             if (lvl == null) return;
             var b = State.Building(id);
-            string t = "Sv." + b.Level + (b.Level >= BuildingDatabase.MaxLevel ? " (MAKS)" : "");
+            string t = Loc.T("Sv.", "Lv.") + b.Level + (b.Level >= BuildingDatabase.MaxLevel ? Loc.T(" (MAKS)", " (MAX)") : "");
             if (b.UpgradeEndsAt > 0)
                 t += "  <color=#7CF2C8>" + BuildingDatabase.FormatDuration(Session.UpgradeSecondsLeft(id, now)) + "</color>";
             lvl.GetComponent<Text>().text = t;
@@ -335,7 +343,7 @@ namespace Sorchemist.UI
                 UIKit.Place(win.rectTransform, new Vector2(0.5f, 0), new Vector2(0, 200), new Vector2(64, 64), new Vector2(0.5f, 0));
                 win.gameObject.AddComponent<Bouncer>().Glow = true;
             }
-            AddNameplate(rt, "Aqualf'in Kulesi", Theme.Accent, -10);
+            AddNameplate(rt, Loc.T("Aqualf'in Kulesi", "Aqualf's Tower"), Theme.Accent, -10);
             tower.gameObject.AddComponent<Button>().onClick.AddListener(() => OpenBuilding(BuildingDatabase.Tower));
             _towerView = rt;
         }
@@ -379,7 +387,7 @@ namespace Sorchemist.UI
             }
             _mystery.Find("Glow").gameObject.SetActive(ready);
             _mysteryImg.color = ready ? Color.white : new Color(0.55f, 0.55f, 0.6f, 0.55f);
-            if (ready) _mysteryLabel.text = "Gizemli Kutu!";
+            if (ready) _mysteryLabel.text = Loc.T("Gizemli Kutu!", "Mystery Box!");
             else
             {
                 long left = Session.MysterySecondsLeft(now);
@@ -392,7 +400,7 @@ namespace Sorchemist.UI
             long now = DateTimeOffset.UtcNow.ToUnixTimeSeconds();
             if (!Session.MysteryReady(now))
             {
-                G.Toast("Gizemli kutu her " + Session.MysteryInterval / 3600 + " saatte bir gelir. Sıradaki: " + _mysteryLabel.text);
+                G.Toast(Loc.T("Gizemli kutu her ", "The Mystery Box comes every ") + Session.MysteryInterval / 3600 + Loc.T(" saatte bir gelir. Sıradaki: ", " hours. Next: ") + _mysteryLabel.text);
                 return;
             }
             var r = Session.OpenMystery(now);
@@ -404,10 +412,10 @@ namespace Sorchemist.UI
             string els = string.Join(", ", r.Elements.Select(kv => kv.Value + " x " + AlchemyNames.Name(ElementDatabase.Get(kv.Key).Number) +
                 " (" + kv.Key + ")").ToArray());
             var raw = RawMaterialDatabase.Get(r.RawId);
-            ResultPopup.Show(r.Rare ? "Nadir Hazine!" : "Gizemli Kutu", Theme.Gold,
-                "Kutunun içinden şunlar çıktı:\n\n<b>" + els + "</b>\n+1 " + raw.NameTr + "\n+" + r.Gold + " altın",
-                "Sıradaki kutu " + Session.MysteryInterval / 3600 + " saat sonra köye gelecek. Nadir elementler için 'Şans Tılsımı' pasifi işe yarar.",
-                "+" + r.Xp + " XP" + (r.Knowledge > 0 ? "  •  +" + r.Knowledge + " Bilgi" : ""), "Sorchemist'te gizemli kutudan " + els + " çıktı!",
+            ResultPopup.Show(r.Rare ? Loc.T("Nadir Hazine!", "Rare Treasure!") : Loc.T("Gizemli Kutu", "Mystery Box"), Theme.Gold,
+                Loc.T("Kutunun içinden şunlar çıktı:\n\n<b>", "Out of the box came:\n\n<b>") + els + "</b>\n+1 " + raw.NameTr + "\n+" + r.Gold + Loc.T(" altın", " gold"),
+                Loc.T("Sıradaki kutu ", "The next box arrives in ") + Session.MysteryInterval / 3600 + Loc.T(" saat sonra köye gelecek. Nadir elementler için 'Şans Tılsımı' pasifi işe yarar.", " hours. The 'Lucky Charm' passive helps with rare elements."),
+                "+" + r.Xp + " XP" + (r.Knowledge > 0 ? "  •  +" + r.Knowledge + Loc.T(" Bilgi", " Knowledge") : ""), Loc.T("Sorchemist'te gizemli kutudan ", "I got ") + els + Loc.T(" çıktı!", " from a Mystery Box in Sorchemist!"),
                 () => { G.HandleLevelUps(r.LevelUps); Refresh(); }, Art.Has("mystery_box_2") ? "mystery_box_2" : null);
             RefreshMystery();
         }
@@ -425,19 +433,19 @@ namespace Sorchemist.UI
             string line;
             switch (st)
             {
-                case HouseState.Happy: line = "Selam Aqualf! Senin sayende her şey yolunda."; break;
-                case HouseState.GiantPumpkins: line = "Kapımı açamıyorum. Kabaklar. Her yerde kabaklar."; break;
-                case HouseState.Frog: line = "Vırak. (Sanırım sana kızgın değil.)"; break;
-                case HouseState.Floating: line = "Yukarıdan manzara güzel ama inmek istiyorum!"; break;
-                case HouseState.Frozen: line = "B-b-burası b-biraz s-soğuk..."; break;
-                case HouseState.Foam: line = "Köpükten kale yaptım! Ama evim nerede?"; break;
-                case HouseState.Glowing: line = "Evim gece gündüz parlıyor. Gözlük lazım."; break;
-                case HouseState.Pink: line = "Pembe yakıştı mı sence? Tavuklarım bayıldı."; break;
-                case HouseState.Fireworks: line = "Ambarım... ama gösteri muhteşemdi!"; break;
+                case HouseState.Happy: line = Loc.T("Selam Aqualf! Senin sayende her şey yolunda.", "Hi Aqualf! Thanks to you, everything is fine."); break;
+                case HouseState.GiantPumpkins: line = Loc.T("Kapımı açamıyorum. Kabaklar. Her yerde kabaklar.", "I can't open my door. Pumpkins. Pumpkins everywhere."); break;
+                case HouseState.Frog: line = Loc.T("Vırak. (Sanırım sana kızgın değil.)", "Ribbit. (I don't think they're mad at you.)"); break;
+                case HouseState.Floating: line = Loc.T("Yukarıdan manzara güzel ama inmek istiyorum!", "The view from up here is nice, but I want to come down!"); break;
+                case HouseState.Frozen: line = Loc.T("B-b-burası b-biraz s-soğuk...", "I-i-it's a b-bit c-cold in here..."); break;
+                case HouseState.Foam: line = Loc.T("Köpükten kale yaptım! Ama evim nerede?", "I built a castle out of foam! But where's my house?"); break;
+                case HouseState.Glowing: line = Loc.T("Evim gece gündüz parlıyor. Gözlük lazım.", "My house glows day and night. I need sunglasses."); break;
+                case HouseState.Pink: line = Loc.T("Pembe yakıştı mı sence? Tavuklarım bayıldı.", "Does pink suit me? My chickens love it."); break;
+                case HouseState.Fireworks: line = Loc.T("Ambarım... ama gösteri muhteşemdi!", "My barn... but the show was amazing!"); break;
                 default:
                     line = v.AmbientTr != null && v.AmbientTr.Length > 0
                         ? v.AmbientTr[UnityEngine.Random.Range(0, v.AmbientTr.Length)]
-                        : "Merhaba simyacı! Bugün sana bir işim yok.";
+                        : Loc.T("Merhaba simyacı! Bugün sana bir işim yok.", "Hello, alchemist! I don't need anything today.");
                     break;
             }
             DialoguePanel.Show(G.Overlay, v.NameTr, v.RoleTr, v.ColorHex, "portrait_" + v.Id, new[] { line }, null);
@@ -473,32 +481,32 @@ namespace Sorchemist.UI
             int lv = b.Level;
             if (tower)
             {
-                info = "<b>Seviye " + lv + " / " + BuildingDatabase.MaxLevel + "</b>\n" +
-                    "Kazan kapasitesi: <b>" + BuildingDatabase.CauldronCapacity(lv) + " atom</b>" + NextVal(lv, BuildingDatabase.CauldronCapacity) + "\n" +
-                    "Pasif yuvası: <b>" + BuildingDatabase.PassiveSlots(lv) + "</b>" + NextVal(lv, BuildingDatabase.PassiveSlots) + "\n" +
-                    "Usta sayısı (aynı anda yükseltme): <b>" + BuildingDatabase.Builders(lv) + "</b>" + NextVal(lv, BuildingDatabase.Builders) + "\n" +
-                    "Bilgi geliri: <b>" + Session.KnowledgePerMinute.ToString("0.#") + "/dk</b>\n" +
-                    "<size=26><color=#A99FC9>Köydeki evler kulenin en fazla 2 seviye üstüne çıkabilir.</color></size>";
+                info = Loc.T("<b>Seviye ", "<b>Level ") + lv + " / " + BuildingDatabase.MaxLevel + "</b>\n" +
+                    Loc.T("Kazan kapasitesi: <b>", "Cauldron capacity: <b>") + BuildingDatabase.CauldronCapacity(lv) + Loc.T(" atom</b>", " atoms</b>") + NextVal(lv, BuildingDatabase.CauldronCapacity) + "\n" +
+                    Loc.T("Pasif yuvası: <b>", "Passive slots: <b>") + BuildingDatabase.PassiveSlots(lv) + "</b>" + NextVal(lv, BuildingDatabase.PassiveSlots) + "\n" +
+                    Loc.T("Usta sayısı (aynı anda yükseltme): <b>", "Builders (upgrades at once): <b>") + BuildingDatabase.Builders(lv) + "</b>" + NextVal(lv, BuildingDatabase.Builders) + "\n" +
+                    Loc.T("Bilgi geliri: <b>", "Knowledge income: <b>") + Session.KnowledgePerMinute.ToString("0.#") + Loc.T("/dk</b>\n", "/min</b>\n") +
+                    Loc.T("<size=26><color=#A99FC9>Köydeki evler kulenin en fazla 2 seviye üstüne çıkabilir.</color></size>", "<size=26><color=#A99FC9>Village houses can be at most 2 levels above the Tower.</color></size>");
             }
             else
             {
                 info = "<b>" + v.NameTr + "</b> <color=#A99FC9>(" + v.RoleTr + ")</color>\n" +
-                    "<b>Seviye " + lv + " / " + BuildingDatabase.MaxLevel + "</b>   Altın: <b>" + BuildingDatabase.GoldPerMinute(id, lv) + "/dk</b>" +
+                    Loc.T("<b>Seviye ", "<b>Level ") + lv + " / " + BuildingDatabase.MaxLevel + Loc.T("</b>   Altın: <b>", "</b>   Gold: <b>") + BuildingDatabase.GoldPerMinute(id, lv) + Loc.T("/dk</b>", "/min</b>") +
                     (lv < BuildingDatabase.MaxLevel ? " <color=#7CF2C8>(→ " + BuildingDatabase.GoldPerMinute(id, lv + 1) + ")</color>" : "") + "\n";
                 var unlocks = BuildingDatabase.UnlocksOf(id).ToList();
                 if (unlocks.Count > 0)
                 {
-                    info += "\n<b>Öğrettiği deneyler:</b>\n";
+                    info += Loc.T("\n<b>Öğrettiği deneyler:</b>\n", "\n<b>Experiments it teaches:</b>\n");
                     foreach (var u in unlocks)
                     {
                         var c = CompoundDatabase.Get(u.CompoundId);
                         bool open = lv >= u.Level;
                         bool known = State.Discovered.Contains(c.Id);
                         string nm = known ? c.NameTr + " (" + c.Formula + ")" : "??? (" + CompoundDatabase.EffectNameTr(c.Effect) + ")";
-                        info += open ? "<color=#7CF2C8>• " + nm + " — açık</color>\n" : "<color=#FFB36B>• " + nm + " — Sv." + u.Level + "'de açılır</color>\n";
+                        info += open ? "<color=#7CF2C8>• " + nm + Loc.T(" — açık</color>\n", " — unlocked</color>\n") : "<color=#FFB36B>• " + nm + Loc.T(" — Sv.", " — unlocks at Lv.") + u.Level + Loc.T("'de açılır</color>\n", "</color>\n");
                     }
                 }
-                else info += "\n<size=26><color=#A99FC9>Bu ev yeni deney öğretmez ama seviyesi arttıkça köyün altın geliri artar.</color></size>";
+                else info += Loc.T("\n<size=26><color=#A99FC9>Bu ev yeni deney öğretmez ama seviyesi arttıkça köyün altın geliri artar.</color></size>", "\n<size=26><color=#A99FC9>This house teaches no new experiments, but the village earns more gold as it levels up.</color></size>");
             }
             var t = UIKit.Txt(body, "Info", info, 32, Theme.Text, TextAnchor.UpperLeft);
             t.rectTransform.anchorMin = Vector2.zero; t.rectTransform.anchorMax = Vector2.one;
@@ -514,11 +522,11 @@ namespace Sorchemist.UI
             row.offsetMin = new Vector2(0, 10); row.offsetMax = new Vector2(0, 120);
             UIKit.HList(row, 16);
 
-            _panelUpgrade = UIKit.Wood(UIKit.Btn(row, "Upgrade", "Yükselt", Theme.Accent, () => DoUpgrade(id), 32), UIKit.Hex("#0E3B2C"), UIKit.Hex("#B8FFE4"));
+            _panelUpgrade = UIKit.Wood(UIKit.Btn(row, "Upgrade", Loc.T("Yükselt", "Upgrade"), Theme.Accent, () => DoUpgrade(id), 32), UIKit.Hex("#0E3B2C"), UIKit.Hex("#B8FFE4"));
             UIKit.LE(_panelUpgrade, -1, -1, 2);
             if (tower)
             {
-                var lab = UIKit.Wood(UIKit.Btn(row, "Lab", "Laboratuvara Gir", Theme.Magic, () => { ClosePanel(); G.Show(ScreenId.Lab); }, 32));
+                var lab = UIKit.Wood(UIKit.Btn(row, "Lab", Loc.T("Laboratuvara Gir", "Enter the Lab"), Theme.Magic, () => { ClosePanel(); G.Show(ScreenId.Lab); }, 32));
                 UIKit.LE(lab, -1, -1, 2);
             }
             else
@@ -526,16 +534,16 @@ namespace Sorchemist.UI
                 var q = Session.ActiveQuest;
                 if (q != null && q.VillagerId == id)
                 {
-                    var qb = UIKit.Wood(UIKit.Btn(row, "Quest", "Görevi Dinle", UIKit.Hex("#8E44AD"), () => { ClosePanel(); OpenQuest(); }, 32));
+                    var qb = UIKit.Wood(UIKit.Btn(row, "Quest", Loc.T("Görevi Dinle", "Hear the Quest"), UIKit.Hex("#8E44AD"), () => { ClosePanel(); OpenQuest(); }, 32));
                     UIKit.LE(qb, -1, -1, 2);
                 }
                 else
                 {
-                    var tb = UIKit.Wood(UIKit.Btn(row, "Talk", "Sohbet Et", Theme.PanelLight, () => { ClosePanel(); Talk(v); }, 32));
+                    var tb = UIKit.Wood(UIKit.Btn(row, "Talk", Loc.T("Sohbet Et", "Chat"), Theme.PanelLight, () => { ClosePanel(); Talk(v); }, 32));
                     UIKit.LE(tb, -1, -1, 2);
                 }
             }
-            var close = UIKit.Wood(UIKit.Btn(row, "Close", "Kapat", Theme.PanelLight, ClosePanel, 32));
+            var close = UIKit.Wood(UIKit.Btn(row, "Close", Loc.T("Kapat", "Close"), Theme.PanelLight, ClosePanel, 32));
             UIKit.LE(close, -1, -1, 1);
             UpdatePanel();
         }
@@ -556,24 +564,24 @@ namespace Sorchemist.UI
             var label = UIKit.LabelOf(_panelUpgrade);
             if (b.Level >= BuildingDatabase.MaxLevel)
             {
-                _panelStatus.text = "En yüksek seviyeye ulaştı!";
+                _panelStatus.text = Loc.T("En yüksek seviyeye ulaştı!", "Reached the max level!");
                 label.text = "MAKS";
                 _panelUpgrade.interactable = false;
                 return;
             }
             if (b.UpgradeEndsAt > 0)
             {
-                _panelStatus.text = "Sv." + (b.Level + 1) + "'e yükseltiliyor... Kalan: " + BuildingDatabase.FormatDuration(Session.UpgradeSecondsLeft(id, now));
-                label.text = "Yükseltiliyor";
+                _panelStatus.text = Loc.T("Sv.", "Lv.") + (b.Level + 1) + Loc.T("'e yükseltiliyor... Kalan: ", " upgrade in progress... Left: ") + BuildingDatabase.FormatDuration(Session.UpgradeSecondsLeft(id, now));
+                label.text = Loc.T("Yükseltiliyor", "Upgrading");
                 _panelUpgrade.interactable = false;
                 return;
             }
             int cost = BuildingDatabase.UpgradeCost(id, b.Level);
             string why = Session.CanUpgrade(id);
-            _panelStatus.text = "Sv." + b.Level + " → Sv." + (b.Level + 1) + ":  " + cost + " altın  •  " +
+            _panelStatus.text = Loc.T("Sv.", "Lv.") + b.Level + Loc.T(" → Sv.", " → Lv.") + (b.Level + 1) + ":  " + cost + Loc.T(" altın  •  ", " gold  •  ") +
                 BuildingDatabase.FormatDuration(Session.UpgradeDuration(id)) +
                 (why != null ? "\n<size=26><color=#FF9F9F>" + why + "</color></size>" : "");
-            label.text = "Yükselt (" + cost + " altın)";
+            label.text = Loc.T("Yükselt (", "Upgrade (") + cost + Loc.T(" altın)", " gold)");
             _panelUpgrade.interactable = why == null;
         }
 
@@ -585,7 +593,7 @@ namespace Sorchemist.UI
             AudioFX.Play(Sfx.Collect);
             RectTransform view = id == BuildingDatabase.Tower ? _towerView : (_houseViews.ContainsKey(id) ? _houseViews[id] : null);
             if (view != null) FX.I.Smoke(_objects, UIKit.Hex("#D9C9A8"), view.anchoredPosition + Vector2.up * 120, 14);
-            G.Toast(BuildingDatabase.NameTr(id) + " yükseltmesi başladı: " + BuildingDatabase.FormatDuration(Session.UpgradeSecondsLeft(id, GameManager.Now)));
+            G.Toast(BuildingDatabase.NameTr(id) + Loc.T(" yükseltmesi başladı: ", " upgrade started: ") + BuildingDatabase.FormatDuration(Session.UpgradeSecondsLeft(id, GameManager.Now)));
             UpdatePanel();
             Refresh();
         }
@@ -611,14 +619,14 @@ namespace Sorchemist.UI
         void OpenQuest()
         {
             var q = Session.ActiveQuest;
-            if (q == null) { G.Toast("Bugün kapında kimse yok. Laboratuvarda deney yap!"); return; }
+            if (q == null) { G.Toast(Loc.T("Bugün kapında kimse yok. Laboratuvarda deney yap!", "Nobody is at your door today. Do some experiments in the lab!")); return; }
             var v = VillageDatabase.GetVillager(q.VillagerId);
             Vector2Int hp;
             if (HousePos.TryGetValue(v.Id, out hp)) FocusOn(hp);   // haritayı köylünün evine kaydır
             DialoguePanel.Show(G.Overlay, v.NameTr, v.RoleTr, v.ColorHex, "portrait_" + v.Id, q.DialogueTr, null,
-                new DialogueChoice("İksir Ver", Color.Lerp(Theme.Accent, Color.black, 0.35f), () => PotionPicker.Show(Deliver)),
-                new DialogueChoice("Laboratuvar", Theme.Magic, () => G.Show(ScreenId.Lab)),
-                new DialogueChoice("Sonra", Theme.PanelLight, null));
+                new DialogueChoice(Loc.T("İksir Ver", "Give Potion"), Color.Lerp(Theme.Accent, Color.black, 0.35f), () => PotionPicker.Show(Deliver)),
+                new DialogueChoice(Loc.T("Laboratuvar", "Laboratory"), Theme.Magic, () => G.Show(ScreenId.Lab)),
+                new DialogueChoice(Loc.T("Sonra", "Later"), Theme.PanelLight, null));
         }
 
         void Deliver(string potionId)
@@ -636,10 +644,10 @@ namespace Sorchemist.UI
             {
                 AudioFX.Play(Sfx.Chime);
                 FX.I.Burst(_objects, Theme.Gold, at, 50, 800);
-                FX.I.FloatText(_objects, "+" + o.Gold + " altın", Theme.Gold, at + Vector2.up * 120);
-                string rewards = o.RawRewards.Length > 0 ? "\n\nÖdül: " + string.Join(", ", Array.ConvertAll(o.RawRewards, r => RawMaterialDatabase.Get(r).NameTr)) : "";
-                ResultPopup.Show("Görev Tamam!", Theme.Accent, o.MessageTr + rewards, null, "+" + o.Gold + " altın  •  +" + o.Xp + " XP",
-                    "Aqualf'in iksiri " + v.NameTr + "'nin derdine deva oldu!", () => { G.HandleLevelUps(rep.LevelUps); Refresh(); }, "portrait_" + v.Id);
+                FX.I.FloatText(_objects, "+" + o.Gold + Loc.T(" altın", " gold"), Theme.Gold, at + Vector2.up * 120);
+                string rewards = o.RawRewards.Length > 0 ? Loc.T("\n\nÖdül: ", "\n\nReward: ") + string.Join(", ", Array.ConvertAll(o.RawRewards, r => RawMaterialDatabase.Get(r).NameTr)) : "";
+                ResultPopup.Show(Loc.T("Görev Tamam!", "Quest Complete!"), Theme.Accent, o.MessageTr + rewards, null, "+" + o.Gold + Loc.T(" altın  •  +", " gold  •  +") + o.Xp + " XP",
+                    Loc.T("Aqualf'in iksiri ", "Aqualf's potion cured ") + v.NameTr + Loc.T("'nin derdine deva oldu!", "'s trouble!"), () => { G.HandleLevelUps(rep.LevelUps); Refresh(); }, "portrait_" + v.Id);
             }
             else if (o.Fail != null)
             {
@@ -648,13 +656,13 @@ namespace Sorchemist.UI
                 FX.I.Shake(_map, 25, 0.6f);
                 FX.I.Smoke(_objects, Color.white, at, 16);
                 ResultPopup.Show(o.Fail.TitleTr, ResultPopup.RarityColor(o.Fail.Rarity), o.Fail.DescriptionTr, o.Fail.ScienceTr,
-                    rep.NewFail ? "YENİ FAIL-DEX GİRDİSİ! (" + ResultPopup.RarityName(o.Fail.Rarity) + ")" : null,
-                    "Fındıkdere'de " + o.Fail.TitleTr + " vakası! Aqualf yine yaptı...", () => { G.HandleLevelUps(rep.LevelUps); Refresh(); }, "fx_fail");
+                    rep.NewFail ? Loc.T("YENİ FAIL-DEX GİRDİSİ! (", "NEW FAIL-DEX ENTRY! (") + ResultPopup.RarityName(o.Fail.Rarity) + ")" : null,
+                    Loc.T("Fındıkdere'de ", "Hazelbrook had a case of ") + o.Fail.TitleTr + Loc.T(" vakası! Aqualf yine yaptı...", "! Aqualf did it again..."), () => { G.HandleLevelUps(rep.LevelUps); Refresh(); }, "fx_fail");
             }
             else
             {
                 AudioFX.Play(Sfx.Fail, 0.7f);
-                ResultPopup.Show("Pek İşe Yaramadı", Theme.TextDim, o.MessageTr, null, null, "Aqualf'in iksiri tutmadı!",
+                ResultPopup.Show(Loc.T("Pek İşe Yaramadı", "Didn't Really Work"), Theme.TextDim, o.MessageTr, null, null, Loc.T("Aqualf'in iksiri tutmadı!", "Aqualf's potion didn't work!"),
                     () => { G.HandleLevelUps(rep.LevelUps); Refresh(); }, "portrait_" + v.Id);
             }
             Refresh();
@@ -667,9 +675,9 @@ namespace Sorchemist.UI
             if (q != null)
             {
                 var v = VillageDatabase.GetVillager(q.VillagerId);
-                _questText.text = "<b>" + v.NameTr + "</b> yardım istiyor!  <size=30>(dinlemek için dokun)</size>";
+                _questText.text = "<b>" + v.NameTr + Loc.T("</b> yardım istiyor!  <size=30>(dinlemek için dokun)</size>", "</b> needs help!  <size=30>(tap to listen)</size>");
             }
-            else _questText.text = "Bugün sakin bir gün.";
+            else _questText.text = Loc.T("Bugün sakin bir gün.", "It's a quiet day.");
 
             long now = GameManager.Now;
             foreach (var kv in _houseViews)

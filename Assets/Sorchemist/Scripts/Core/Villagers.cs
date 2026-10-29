@@ -12,11 +12,14 @@ namespace Sorchemist.Core
     public class VillagerData
     {
         public string Id;
-        public string NameTr;
-        public string RoleTr;
+        public string NameTr { get { return Loc.Pick(_nameTr, NameEn); } set { _nameTr = value; } }
+        string _nameTr; public string NameEn;
+        public string RoleTr { get { return Loc.Pick(_roleTr, RoleEn); } set { _roleTr = value; } }
+        string _roleTr; public string RoleEn;
         public int GridX, GridY;       // İzometrik haritadaki ev konumu
         public string ColorHex;        // Yer tutucu görsel rengi
-        public string[] AmbientTr;     // Görevi olmayan köylülerin sohbet cümleleri
+        public string[] AmbientTr { get { return Loc.Pick(_ambientTr, AmbientEn); } set { _ambientTr = value; } }     // Görevi olmayan köylülerin sohbet cümleleri
+        string[] _ambientTr; public string[] AmbientEn;
     }
 
     [Serializable]
@@ -25,9 +28,11 @@ namespace Sorchemist.Core
         public string Id;
         public string VillagerId;
         public int MinLevel;
-        public string[] DialogueTr;            // Köylünün derdini anlattığı satırlar
+        public string[] DialogueTr { get { return Loc.Pick(_dialogueTr, DialogueEn); } set { _dialogueTr = value; } }            // Köylünün derdini anlattığı satırlar
+        string[] _dialogueTr; public string[] DialogueEn;
         public PotionEffect Needed;
-        public string SuccessTr;
+        public string SuccessTr { get { return Loc.Pick(_successTr, SuccessEn); } set { _successTr = value; } }
+        string _successTr; public string SuccessEn;
         public int RewardGold;
         public int RewardXp;
         public string[] RewardRaw;             // Ödül olarak verilen ham madde id'leri
@@ -86,6 +91,13 @@ namespace Sorchemist.Core
         }
 
         private static void Ensure()
+        {
+            if (_villagers != null) return;
+            EnsureData();
+            English.ApplyVillagers(_villagers); English.ApplyQuests(_quests);
+        }
+
+        private static void EnsureData()
         {
             if (_villagers != null) return;
             _villagers = new List<VillagerData>();
@@ -241,7 +253,7 @@ namespace Sorchemist.Core
         {
             var o = new QuestOutcome();
             var v = VillageDatabase.GetVillager(q.VillagerId);
-            string name = v != null ? v.NameTr : "Köylü";
+            string name = v != null ? v.NameTr : Loc.T("Köylü", "Villager");
 
             if (potion != null && potion.Effect == q.Needed)
             {
@@ -272,8 +284,11 @@ namespace Sorchemist.Core
             else
             {
                 o.NewHouseState = HouseState.Normal;
-                o.MessageTr = name + ": \"Hmm... bu " + CompoundDatabase.EffectNameTr(eff).ToLowerInvariant() +
-                              " iksiri gibi. Benim derdime pek iyi gelmedi.\"";
+                o.MessageTr = Loc.En
+                    ? name + ": \"Hmm... this tastes like a " + CompoundDatabase.EffectNameTr(eff).ToLowerInvariant() +
+                      " potion. It didn't really help with my problem.\""
+                    : name + ": \"Hmm... bu " + CompoundDatabase.EffectNameTr(eff).ToLowerInvariant() +
+                      " iksiri gibi. Benim derdime pek iyi gelmedi.\"";
             }
             return o;
         }

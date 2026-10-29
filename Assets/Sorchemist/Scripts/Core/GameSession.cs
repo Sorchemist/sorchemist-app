@@ -129,13 +129,13 @@ namespace Sorchemist.Core
         public string CanUpgrade(string id)
         {
             var b = State.Building(id);
-            if (b.Level >= BuildingDatabase.MaxLevel) return "En yüksek seviyede";
-            if (b.UpgradeEndsAt > 0) return "Zaten yükseltiliyor";
-            if (ActiveUpgrades >= State.Builders) return "Bütün ustalar meşgul (" + State.Builders + " usta)";
+            if (b.Level >= BuildingDatabase.MaxLevel) return Loc.T("En yüksek seviyede", "Already at max level");
+            if (b.UpgradeEndsAt > 0) return Loc.T("Zaten yükseltiliyor", "Already upgrading");
+            if (ActiveUpgrades >= State.Builders) return Loc.T("Bütün ustalar meşgul (" + State.Builders + " usta)", "All builders are busy (" + State.Builders + " builders)");
             if (id != BuildingDatabase.Tower && b.Level >= State.TowerLevel + 2)
-                return "Önce Aqualf'in Kulesi'ni Sv." + (b.Level - 1) + " yap";
+                return Loc.T("Önce Aqualf'in Kulesi'ni Sv." + (b.Level - 1) + " yap", "First raise Aqualf's Tower to Lv." + (b.Level - 1));
             int cost = BuildingDatabase.UpgradeCost(id, b.Level);
-            if (State.Gold < cost) return "Yetersiz altın (" + cost + " gerekli)";
+            if (State.Gold < cost) return Loc.T("Yetersiz altın (" + cost + " gerekli)", "Not enough gold (" + cost + " needed)");
             return null;
         }
 
@@ -220,9 +220,9 @@ namespace Sorchemist.Core
         public BrewReport StartBrew(Dictionary<string, int> atoms, long nowUnix)
         {
             var report = new BrewReport();
-            if (IsBrewing) { report.Result = new BrewResult { MessageTr = "Kazan zaten dolu! Önce demlenen iksiri topla." }; return report; }
-            if (!State.HasElements(atoms)) { report.Result = new BrewResult { MessageTr = "Bu kadar elementin yok!" }; return report; }
-            if (atoms.Values.Sum() == 0) { report.Result = new BrewResult { MessageTr = "Kazan boş." }; return report; }
+            if (IsBrewing) { report.Result = new BrewResult { MessageTr = Loc.T("Kazan zaten dolu! Önce demlenen iksiri topla.", "The cauldron is busy! Collect the brewing potion first.") }; return report; }
+            if (!State.HasElements(atoms)) { report.Result = new BrewResult { MessageTr = Loc.T("Bu kadar elementin yok!", "You don't have that many elements!") }; return report; }
+            if (atoms.Values.Sum() == 0) { report.Result = new BrewResult { MessageTr = Loc.T("Kazan boş.", "The cauldron is empty.") }; return report; }
 
             var known = CompoundDatabase.FindByAtoms(atoms);
             if (known != null && atoms.Values.Sum() <= State.CauldronCapacity)
@@ -233,7 +233,7 @@ namespace Sorchemist.Core
                     report.Locked = true;
                     report.Result = new BrewResult
                     {
-                        MessageTr = "Bu deneyin kilidi kapalı: " + BuildingDatabase.NameTr(u.BuildingId) + " Sv." + u.Level + " olmalı."
+                        MessageTr = Loc.T("Bu deneyin kilidi kapalı: " + BuildingDatabase.NameTr(u.BuildingId) + " Sv." + u.Level + " olmalı.", "This experiment is locked: " + BuildingDatabase.NameTr(u.BuildingId) + " must be Lv." + u.Level + ".")
                     };
                     return report;
                 }
@@ -241,7 +241,7 @@ namespace Sorchemist.Core
                 State.BrewingId = known.Id;
                 State.BrewReadyAt = nowUnix + BrewDuration(known);
                 report.Started = true;
-                report.Result = new BrewResult { Success = true, Compound = known, MessageTr = known.NameTr + " demleniyor..." };
+                report.Result = new BrewResult { Success = true, Compound = known, MessageTr = known.NameTr + Loc.T(" demleniyor...", " is brewing...") };
                 Notify();
                 return report;
             }
@@ -275,7 +275,7 @@ namespace Sorchemist.Core
             State.BrewingId = null; State.BrewReadyAt = 0;
             var report = new BrewReport
             {
-                Result = new BrewResult { Success = true, Compound = c, Xp = c.Xp, MessageTr = c.NameTr + " (" + c.Formula + ") hazır! " + c.FlavorTr }
+                Result = new BrewResult { Success = true, Compound = c, Xp = c.Xp, MessageTr = c.NameTr + " (" + c.Formula + ")" + Loc.T(" hazır! ", " is ready! ") + c.FlavorTr }
             };
             State.AddPotion(c.Id, 1);
             if (!State.Discovered.Contains(c.Id))
@@ -368,9 +368,9 @@ namespace Sorchemist.Core
         public string CanBuyPassive(string id)
         {
             var p = PassiveDatabase.Get(id);
-            if (p == null) return "Bilinmeyen özellik";
-            if (State.OwnedPassives.Contains(id)) return "Zaten sende";
-            if (State.Knowledge < p.Cost) return "Yetersiz Bilgi Puanı (" + p.Cost + " gerekli)";
+            if (p == null) return Loc.T("Bilinmeyen özellik", "Unknown passive");
+            if (State.OwnedPassives.Contains(id)) return Loc.T("Zaten sende", "You already have it");
+            if (State.Knowledge < p.Cost) return Loc.T("Yetersiz Bilgi Puanı (" + p.Cost + " gerekli)", "Not enough Knowledge (" + p.Cost + " needed)");
             return null;
         }
 
@@ -386,10 +386,10 @@ namespace Sorchemist.Core
 
         public string Equip(string id)
         {
-            if (!State.OwnedPassives.Contains(id)) return "Önce bu özelliği aç";
+            if (!State.OwnedPassives.Contains(id)) return Loc.T("Önce bu özelliği aç", "Unlock this passive first");
             if (State.EquippedPassives.Contains(id)) return null;
             if (State.EquippedPassives.Count >= State.PassiveSlots)
-                return "Bütün yuvalar dolu. Kuleyi yükselterek yeni yuva aç.";
+                return Loc.T("Bütün yuvalar dolu. Kuleyi yükselterek yeni yuva aç.", "All slots are full. Upgrade the Tower to open a new slot.");
             State.EquippedPassives.Add(id);
             Notify();
             return null;
