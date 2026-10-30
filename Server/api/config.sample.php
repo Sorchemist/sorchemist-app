@@ -16,4 +16,7 @@ return [
 
     // install.php'yi bir kez çalıştırmak için uzun, rastgele bir anahtar. Kurulumdan sonra '' yap.
     'install_key' => 'BURAYA_UZUN_RASTGELE_BIR_ANAHTAR',
+
+    // Yalnızca yerel testler içindir. Gerçek sunucuda HER ZAMAN false kalmalı.
+    'allow_test_clock' => false,
 ];

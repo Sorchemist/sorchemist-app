@@ -52,9 +52,19 @@ function row(string $sql, array $args = []): ?array { $r = q($sql, $args)->fetch
 function rows(string $sql, array $args = []): array { return q($sql, $args)->fetchAll(); }
 function val(string $sql, array $args = []) { $r = q($sql, $args)->fetchColumn(); return $r === false ? null : $r; }
 
-function now(): int { return time(); }
-function week_key(?int $t = null): int { $t = $t ?? time(); return (int)gmdate('o', $t) * 100 + (int)gmdate('W', $t); }   // 202644 gibi
-function day_key(?int $t = null): int { return (int)gmdate('Ymd', $t ?? time()); }
+/** Sunucu saati. Testlerde (yalnızca config'te allow_test_clock açıksa) X-Test-Now başlığıyla ileri alınabilir. */
+function now(): int
+{
+    static $t = null;
+    if ($t === null) {
+        $t = time();
+        $h = $_SERVER['HTTP_X_TEST_NOW'] ?? '';
+        if ($h !== '' && cfg('allow_test_clock', false) === true && ctype_digit($h)) $t = (int)$h;
+    }
+    return $t;
+}
+function week_key(?int $t = null): int { $t = $t ?? now(); return (int)gmdate('o', $t) * 100 + (int)gmdate('W', $t); }   // 202644 gibi
+function day_key(?int $t = null): int { return (int)gmdate('Ymd', $t ?? now()); }
 
 // ---------- JSON yanıtları ----------
 function out(array $data = []): void
@@ -183,6 +193,7 @@ function public_user(array $u): array
         'friendCode' => $u['friend_code'],
         'lastSeen' => (int)$u['last_seen'],
         'guildId' => $u['guild_id'] !== null ? (int)$u['guild_id'] : null,
+        'flagged' => (int)($u['flagged'] ?? 0) === 1,
     ];
 }
 

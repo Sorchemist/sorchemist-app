@@ -10,13 +10,23 @@ namespace Sorchemist.Game
     public static class SaveService
     {
         static string PathOf { get { return System.IO.Path.Combine(Application.persistentDataPath, "sorchemist_save.json"); } }
+        static string SigPath { get { return PathOf + ".sig"; } }
+        static string DeviceKey { get { return SystemInfo.deviceUniqueIdentifier; } }
 
         public static PlayerState Load()
         {
             try
             {
                 if (!File.Exists(PathOf)) return null;
-                var s = JsonUtility.FromJson<PlayerState>(File.ReadAllText(PathOf));
+                var json = File.ReadAllText(PathOf);
+                var s = JsonUtility.FromJson<PlayerState>(json);
+                // İmza dosyası varsa ve tutmuyorsa kayıt elle düzenlenmiştir (eski sürümlerde imza yoktu)
+                if (s != null && File.Exists(SigPath) && !SaveSignature.Verify(json, DeviceKey, File.ReadAllText(SigPath).Trim()))
+                {
+                    s.TamperCount++;
+                    Debug.LogWarning("[Sorchemist] Kayıt dosyasının imzası tutmuyor.");
+                    Save(s);
+                }
                 return s;
             }
             catch (Exception e)
@@ -30,10 +40,14 @@ namespace Sorchemist.Game
         {
             try
             {
-                string tmp = PathOf + ".tmp";
-                File.WriteAllText(tmp, JsonUtility.ToJson(s));
+                string json = JsonUtility.ToJson(s);
+                string tmp = PathOf + ".tmp", sigTmp = SigPath + ".tmp";
+                File.WriteAllText(tmp, json);
+                File.WriteAllText(sigTmp, SaveSignature.Compute(json, DeviceKey));
                 if (File.Exists(PathOf)) File.Delete(PathOf);
                 File.Move(tmp, PathOf);
+                if (File.Exists(SigPath)) File.Delete(SigPath);
+                File.Move(sigTmp, SigPath);
             }
             catch (Exception e)
             {
@@ -44,6 +58,7 @@ namespace Sorchemist.Game
         public static void Delete()
         {
             if (File.Exists(PathOf)) File.Delete(PathOf);
+            if (File.Exists(SigPath)) File.Delete(SigPath);
         }
     }
 

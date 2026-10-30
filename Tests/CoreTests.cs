@@ -129,6 +129,13 @@ static class CoreTests
         var vil = CloudData.Village(big, "Ali");
         Check((int)CloudData.Stats(big)["quests"] == 2000 && (string)vil["name"] == "Ali", "Sıralama istatistikleri ve köy vitrini");
 
+        Console.WriteLine("Hile koruması");
+        string sig = SaveSignature.Compute(bigJson, "cihaz1");
+        Check(SaveSignature.Verify(bigJson, "cihaz1", sig), "Kayıt imzası doğrulanır");
+        Check(!SaveSignature.Verify(bigJson.Replace("g0001", "g0002"), "cihaz1", sig) && !SaveSignature.Verify(bigJson, "cihaz2", sig), "Değiştirilen kayıt ya da başka cihaz imzası tutmaz");
+        var ps = new PlayerState { LedgerId = 7, TamperCount = 1 };
+        Check(ps.LedgerId == 7 && ps.TamperCount == 1 && PlayerState.NewGame().TamperCount == 0, "Defter numarası ve kurcalama sayacı kayıtta");
+
         Console.WriteLine("Dil (İngilizce)");
         Loc.Current = Lang.En;
         Check(ElementDatabase.Get("Fe").NameTr == "Iron" && CompoundDatabase.Get("salt").NameTr == "Table Salt", "Element ve bileşik adları İngilizce");

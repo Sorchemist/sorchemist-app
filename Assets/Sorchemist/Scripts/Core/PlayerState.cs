@@ -44,6 +44,8 @@ namespace Sorchemist.Core
         public bool HapticsOn = true;
         public long MysteryReadyAt;     // Gizemli kutunun açılabileceği zaman (unix sn). 0 = hemen
         public int MysteryOpened;       // Kaç kutu açıldı
+        public int LedgerId;            // Sunucu defterinde (hediye/takas/lonca) bu kayda işlenmiş son hareket
+        public int TamperCount;         // Yerel kayıt dosyası dışarıdan değiştirilmiş bulundu (hile koruması)
 
         // ---- Bina / zaman tabanlı ilerleme ----
         public int Knowledge;           // Bilgi Puanı (pasif özellik açmak için)

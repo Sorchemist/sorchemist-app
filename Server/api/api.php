@@ -6,6 +6,7 @@
 declare(strict_types=1);
 define('SORCHEMIST', 1);
 require __DIR__ . '/lib.php';
+require __DIR__ . '/anticheat.php';
 
 if (($_SERVER['REQUEST_METHOD'] ?? 'GET') !== 'POST') out(['service' => 'sorchemist', 'version' => API_VERSION]);
 
@@ -119,7 +120,7 @@ function a_me(): void
 {
     $u = auth();
     $save = row('SELECT rev, size, updated_at FROM saves WHERE user_id = ?', [$u['id']]);
-    out(['user' => public_user($u), 'email' => $u['email'], 'google' => $u['google_sub'] !== null,
+    out(['user' => public_user($u), 'email' => $u['email'], 'google' => $u['google_sub'] !== null, 'ledgerMax' => ledger_max((int)$u['id']),
         'save' => $save ? ['rev' => (int)$save['rev'], 'size' => (int)$save['size'], 'updatedAt' => (int)$save['updated_at']] : null]);
 }
 
@@ -141,7 +142,7 @@ function a_delete_account(): void
         if (!password_verify($pass, $u['pass_hash'])) fail('wrong_credentials', 401);
     }
     if ($u['guild_id'] !== null) leave_guild($u);
-    foreach (['sessions', 'saves', 'villages', 'stats', 'weekly', 'gift_days'] as $t) q("DELETE FROM $t WHERE user_id = ?", [$id]);
+    foreach (['sessions', 'saves', 'save_history', 'ledger', 'cheat_log', 'villages', 'stats', 'weekly', 'gift_days'] as $t) q("DELETE FROM $t WHERE user_id = ?", [$id]);
     q('DELETE FROM friends WHERE user_id = ? OR friend_id = ?', [$id, $id]);
     q('DELETE FROM gifts WHERE from_id = ? OR to_id = ?', [$id, $id]);
     q('DELETE FROM trades WHERE from_id = ? OR to_id = ?', [$id, $id]);
@@ -171,40 +172,67 @@ function a_save_put(): void
     rate_limit('save|' . $id, 30, 60);
     $data = str_in('data', MAX_SAVE_BYTES);
     if (!preg_match('/^[A-Za-z0-9+\/=]+$/', $data)) fail('bad_data');
+    $state = decode_save($data);
+    if ($state === null) fail('bad_data');
     $baseRev = int_in('baseRev', 0, PHP_INT_MAX, 0);
     $force = !empty(input()['force']);
     $device = mb_substr((string)(input()['device'] ?? ''), 0, 64);
 
-    $cur = row('SELECT rev, updated_at, device FROM saves WHERE user_id = ?', [$id]);
+    $cur = row('SELECT rev, data, updated_at, device FROM saves WHERE user_id = ?', [$id]);
     if ($cur && (int)$cur['rev'] !== $baseRev && !$force)
         fail('conflict', 409, ['serverRev' => (int)$cur['rev'], 'serverUpdatedAt' => (int)$cur['updated_at'], 'serverDevice' => $cur['device']]);
-    $rev = $cur ? (int)$cur['rev'] + 1 : 1;
-    upsert('saves', ['user_id' => $id, 'rev' => $rev, 'data' => $data, 'size' => strlen($data), 'device' => $device, 'updated_at' => now()], ['user_id']);
 
-    // Sıralama istatistikleri ve köy vitrini (arkadaşlar ziyaret edince görür)
-    $st = input()['stats'] ?? null;
-    if (is_array($st)) {
-        $lv = max(1, min(999, (int)($st['level'] ?? 1)));
-        $disc = max(0, min(100000, (int)($st['discoveries'] ?? 0)));
-        $fail = max(0, min(100000, (int)($st['faildex'] ?? 0)));
-        $qst = max(0, min(100000, (int)($st['quests'] ?? 0)));
-        upsert('stats', ['user_id' => $id, 'level' => $lv, 'discoveries' => $disc, 'faildex' => $fail, 'quests' => $qst, 'updated_at' => now()], ['user_id']);
-        q('UPDATE users SET level = ? WHERE id = ?', [$lv, $id]);
-        $wk = week_key();
-        $w = row('SELECT * FROM weekly WHERE user_id = ? AND week = ?', [$id, $wk]);
-        if (!$w) {
-            q('INSERT INTO weekly (user_id, week, base_disc, base_fail, base_quests, cur_disc, cur_fail, cur_quests) VALUES (?,?,?,?,?,?,?,?)',
-                [$id, $wk, $disc, $fail, $qst, $disc, $fail, $qst]);
-        } else {
-            q('UPDATE weekly SET cur_disc = ?, cur_fail = ?, cur_quests = ? WHERE user_id = ? AND week = ?', [$disc, $fail, $qst, $id, $wk]);
+    // ---- Hile koruması: kaydı, bu cihazın en son bildiği geçerli kayıtla karşılaştır ----
+    $m = save_metrics($state);
+    $reasons = check_absolute($m);
+    if ($m['ledgerId'] > ledger_max($id)) $reasons[] = 'ledger_future';
+    $base = null;
+    if ($cur) {
+        $h = $baseRev > 0 ? row('SELECT data, created_at FROM save_history WHERE user_id = ? AND rev = ?', [$id, $baseRev]) : null;
+        $base = $h ? ['data' => $h['data'], 'at' => (int)$h['created_at']] : ['data' => $cur['data'], 'at' => (int)$cur['updated_at']];
+        $prevState = decode_save($base['data']);
+        if ($prevState !== null) {
+            $prev = save_metrics($prevState);
+            $ledger = ledger_sum($id, $prev['ledgerId'], max($prev['ledgerId'], $m['ledgerId']));
+            $reasons = array_merge($reasons, check_delta($prev, $m, now() - $base['at'], $ledger));
         }
     }
-    $village = input()['village'] ?? null;
-    if (is_array($village)) {
-        $json = json_encode($village, JSON_UNESCAPED_UNICODE);
-        if (strlen($json) <= 16384) upsert('villages', ['user_id' => $id, 'json' => $json, 'updated_at' => now()], ['user_id']);
+    $reasons = array_values(array_unique($reasons));
+    if ($reasons) {
+        cheat_strike($id, $reasons);
+        fail('save_rejected', 422, ['reasons' => $reasons, 'serverRev' => $cur ? (int)$cur['rev'] : 0]);
     }
-    out(['rev' => $rev]);
+
+    $rev = $cur ? (int)$cur['rev'] + 1 : 1;
+    upsert('saves', ['user_id' => $id, 'rev' => $rev, 'data' => $data, 'size' => strlen($data), 'device' => $device, 'updated_at' => now()], ['user_id']);
+    q('INSERT INTO save_history (user_id, rev, data, created_at) VALUES (?, ?, ?, ?)', [$id, $rev, $data, now()]);
+    q('DELETE FROM save_history WHERE user_id = ? AND rev <= ?', [$id, $rev - 10]);   // son 10 sürüm saklanır
+
+    // Sıralama istatistikleri ve köy vitrini artık cihazın söylediğinden değil, doğrulanmış kayıttan hesaplanır
+    $lv = $m['level'];
+    $disc = count(array_unique($m['known'])) + count(array_unique($m['discovered']));
+    $fail = count(array_unique($m['faildex']));
+    $qst = count($m['quests']);
+    upsert('stats', ['user_id' => $id, 'level' => $lv, 'discoveries' => $disc, 'faildex' => $fail, 'quests' => $qst, 'updated_at' => now()], ['user_id']);
+    q('UPDATE users SET level = ? WHERE id = ?', [$lv, $id]);
+    $wk = week_key();
+    $w = row('SELECT * FROM weekly WHERE user_id = ? AND week = ?', [$id, $wk]);
+    if (!$w) {
+        q('INSERT INTO weekly (user_id, week, base_disc, base_fail, base_quests, cur_disc, cur_fail, cur_quests) VALUES (?,?,?,?,?,?,?,?)',
+            [$id, $wk, $disc, $fail, $qst, $disc, $fail, $qst]);
+    } else {
+        q('UPDATE weekly SET cur_disc = ?, cur_fail = ?, cur_quests = ? WHERE user_id = ? AND week = ?', [$disc, $fail, $qst, $id, $wk]);
+    }
+    $buildings = [];
+    foreach ($m['buildings'] as $bid => $blv) $buildings[] = ['id' => $bid, 'lv' => $blv];
+    $houses = [];
+    foreach ((array)($state['Houses'] ?? []) as $h)
+        if (is_array($h) && (int)($h['State'] ?? 0) !== 0 && in_array((string)($h['VillagerId'] ?? ''), BUILDING_IDS, true))
+            $houses[] = ['id' => (string)$h['VillagerId'], 'st' => (int)$h['State']];
+    $village = ['name' => $u['display_name'], 'level' => $lv, 'day' => $m['day'], 'tower' => $m['buildings']['tower'] ?? 1,
+        'buildings' => $buildings, 'houses' => $houses, 'discovered' => count(array_unique($m['discovered'])), 'faildex' => $fail];
+    upsert('villages', ['user_id' => $id, 'json' => json_encode($village, JSON_UNESCAPED_UNICODE), 'updated_at' => now()], ['user_id']);
+    out(['rev' => $rev, 'ledgerMax' => ledger_max($id)]);
 }
 
 // =====================================================================
@@ -314,11 +342,14 @@ function a_gift_send(): void
     $to = int_in('toId', 1);
     $potion = potion_in('potion');
     if (!are_friends($id, $to)) fail('not_friends', 403);
+    require_clean($u);
     $n = (int)val('SELECT n FROM gift_days WHERE user_id = ? AND day = ?', [$id, day_key()]);
     if ($n >= GIFTS_PER_DAY) fail('daily_gift_limit');
+    require_potion($id, $potion);
     upsert('gift_days', ['user_id' => $id, 'day' => day_key(), 'n' => $n + 1], ['user_id', 'day']);
     q('INSERT INTO gifts (from_id, to_id, potion, created_at) VALUES (?, ?, ?, ?)', [$id, $to, $potion, now()]);
-    out(['giftsLeftToday' => GIFTS_PER_DAY - $n - 1]);
+    $lid = ledger_add($id, 'p:' . $potion, -1, 'gift_send');
+    out(['giftsLeftToday' => GIFTS_PER_DAY - $n - 1, 'ledgerId' => $lid]);
 }
 
 function a_gift_claim(): void
@@ -327,7 +358,8 @@ function a_gift_claim(): void
     $gid = int_in('giftId', 1);
     $st = q('UPDATE gifts SET claimed_at = ? WHERE id = ? AND to_id = ? AND claimed_at IS NULL', [now(), $gid, $u['id']]);
     if ($st->rowCount() !== 1) fail('already_claimed', 409);
-    out(['potion' => val('SELECT potion FROM gifts WHERE id = ?', [$gid])]);
+    $potion = (string)val('SELECT potion FROM gifts WHERE id = ?', [$gid]);
+    out(['potion' => $potion, 'ledgerId' => ledger_add((int)$u['id'], 'p:' . $potion, 1, 'gift_claim')]);
 }
 
 /** Takas teklifi: teklif eden "give" iksirini emanete verir (cihazında düşer), karşılığında "want" ister. */
@@ -340,10 +372,13 @@ function a_trade_offer(): void
     $want = potion_in('want');
     if ($give === $want) fail('same_potion');
     if (!are_friends($id, $to)) fail('not_friends', 403);
+    require_clean($u);
     if ((int)val('SELECT COUNT(*) FROM trades WHERE from_id = ? AND status = ?', [$id, 'open']) >= 10) fail('too_many_trades');
+    require_potion($id, $give);
     q('INSERT INTO trades (from_id, to_id, give_potion, want_potion, status, created_at) VALUES (?, ?, ?, ?, ?, ?)',
         [$id, $to, $give, $want, 'open', now()]);
-    out(['tradeId' => (int)db()->lastInsertId()]);
+    $tid = (int)db()->lastInsertId();
+    out(['tradeId' => $tid, 'ledgerId' => ledger_add($id, 'p:' . $give, -1, 'trade_offer')]);
 }
 
 /** Alıcı kabul eder: alıcının cihazı "want" iksirini düşer, "give" iksirini alır. Teklif eden sonra "want"ı toplar. */
@@ -351,9 +386,14 @@ function a_trade_accept(): void
 {
     $u = auth();
     $tid = int_in('tradeId', 1);
+    require_clean($u);
+    $t = row('SELECT * FROM trades WHERE id = ? AND to_id = ? AND status = ?', [$tid, $u['id'], 'open']);
+    if (!$t) fail('trade_not_open', 409);
+    require_potion((int)$u['id'], $t['want_potion']);
     $st = q('UPDATE trades SET status = ?, resolved_at = ? WHERE id = ? AND to_id = ? AND status = ?', ['accepted', now(), $tid, $u['id'], 'open']);
     if ($st->rowCount() !== 1) fail('trade_not_open', 409);
-    out(['receive' => val('SELECT give_potion FROM trades WHERE id = ?', [$tid])]);
+    ledger_add((int)$u['id'], 'p:' . $t['want_potion'], -1, 'trade_accept');
+    out(['receive' => $t['give_potion'], 'give' => $t['want_potion'], 'ledgerId' => ledger_add((int)$u['id'], 'p:' . $t['give_potion'], 1, 'trade_accept')]);
 }
 
 function a_trade_decline(): void
@@ -383,7 +423,8 @@ function a_trade_claim(): void
     if (!$t || $t['status'] === 'open') fail('trade_not_resolved', 409);
     $st = q('UPDATE trades SET from_claimed = 1 WHERE id = ? AND from_claimed = 0', [$tid]);
     if ($st->rowCount() !== 1) fail('already_claimed', 409);
-    out(['potion' => $t['status'] === 'accepted' ? $t['want_potion'] : $t['give_potion'], 'status' => $t['status']]);
+    $potion = $t['status'] === 'accepted' ? $t['want_potion'] : $t['give_potion'];
+    out(['potion' => $potion, 'status' => $t['status'], 'ledgerId' => ledger_add((int)$u['id'], 'p:' . $potion, 1, 'trade_claim')]);
 }
 
 // =====================================================================
@@ -396,14 +437,14 @@ function a_leaderboard(): void
     $scope = (string)(input()['scope'] ?? 'global');           // global | friends | guild
     $wk = week_key();
     $cols = ['quests' => '(w.cur_quests - w.base_quests)', 'discoveries' => '(w.cur_disc - w.base_disc)', 'faildex' => '(w.cur_fail - w.base_fail)'];
-    $where = '';
+    $where = ' AND (u.flagged = 0 OR u.id = ' . (int)$u['id'] . ')';   // hileli işaretlenmiş hesaplar sıralamada görünmez
     $args = [];
     if ($scope === 'friends') {
-        $where = ' AND (u.id = ? OR u.id IN (SELECT friend_id FROM friends WHERE user_id = ? AND status = \'accepted\'))';
+        $where .= ' AND (u.id = ? OR u.id IN (SELECT friend_id FROM friends WHERE user_id = ? AND status = \'accepted\'))';
         $args = [$u['id'], $u['id']];
     } elseif ($scope === 'guild') {
         if ($u['guild_id'] === null) out(['entries' => [], 'week' => $wk]);
-        $where = ' AND u.guild_id = ?';
+        $where .= ' AND u.guild_id = ?';
         $args = [$u['guild_id']];
     }
     if ($board === 'level') {
@@ -512,13 +553,15 @@ function a_guild_contribute(): void
     $quest = guild_quest($gid, $wk);
     if (POTION_EFFECTS[$potion] !== $quest['effect']) fail('wrong_effect');
     if ($quest['done']) fail('quest_done');
+    require_clean($u);
     $count = min($count, $quest['target'] - $quest['progress']);
+    require_potion((int)$u['id'], $potion, $count);
     $cur = (int)val('SELECT amount FROM guild_progress WHERE guild_id = ? AND week = ?', [$gid, $wk]);
     upsert('guild_progress', ['guild_id' => $gid, 'week' => $wk, 'amount' => $cur + $count], ['guild_id', 'week']);
     $mine = row('SELECT amount, claimed FROM guild_contrib WHERE guild_id = ? AND week = ? AND user_id = ?', [$gid, $wk, $u['id']]);
     upsert('guild_contrib', ['guild_id' => $gid, 'week' => $wk, 'user_id' => $u['id'], 'amount' => ($mine ? (int)$mine['amount'] : 0) + $count,
         'claimed' => $mine ? (int)$mine['claimed'] : 0], ['guild_id', 'week', 'user_id']);
-    out(['accepted' => $count, 'quest' => guild_quest($gid, $wk)]);
+    out(['accepted' => $count, 'quest' => guild_quest($gid, $wk), 'ledgerId' => ledger_add((int)$u['id'], 'p:' . $potion, -$count, 'guild_contribute')]);
 }
 
 /** Görev tamamlanınca katkı veren her üye ödülünü bir kez alır. */
@@ -532,5 +575,9 @@ function a_guild_claim(): void
     if (!$quest['done']) fail('quest_not_done');
     $st = q('UPDATE guild_contrib SET claimed = 1 WHERE guild_id = ? AND week = ? AND user_id = ? AND claimed = 0 AND amount > 0', [$gid, $wk, $u['id']]);
     if ($st->rowCount() !== 1) fail('nothing_to_claim', 409);
-    out(['gold' => $quest['rewardGold'], 'xp' => $quest['rewardXp'], 'knowledge' => $quest['rewardKnowledge']]);
+    $uid = (int)$u['id'];
+    ledger_add($uid, 'gold', $quest['rewardGold'], 'guild_claim');
+    ledger_add($uid, 'xp', $quest['rewardXp'], 'guild_claim');
+    $lid = ledger_add($uid, 'knowledge', $quest['rewardKnowledge'], 'guild_claim');
+    out(['gold' => $quest['rewardGold'], 'xp' => $quest['rewardXp'], 'knowledge' => $quest['rewardKnowledge'], 'ledgerId' => $lid]);
 }

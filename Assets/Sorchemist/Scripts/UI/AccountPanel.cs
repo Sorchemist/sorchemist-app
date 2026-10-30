@@ -111,6 +111,13 @@ namespace Sorchemist.UI
                 Loc.T("\n<size=24><color=#A99FC9>Bulut kaydı sürümü: ", "\n<size=24><color=#A99FC9>Cloud save version: ") + gm.State.CloudRev + "</color></size>",
                 32, Theme.Text);
             UIKit.LE(info, 150);
+            if (cloud.Flagged)
+            {
+                var warn = UIKit.Txt(col, "Flagged", Loc.T(
+                    "<color=#FF8A80>Hesabın şüpheli bulut kayıtları yüzünden işaretlendi. Hediye, takas ve lonca bağışı kapalı; sıralamalarda görünmüyorsun.</color>",
+                    "<color=#FF8A80>Your account was flagged for suspicious cloud saves. Gifts, trades and guild donations are disabled and you don't appear on leaderboards.</color>"), 24, Theme.Text);
+                UIKit.LE(warn, 70);
+            }
 
             var row1 = UIKit.Rect("Row1", col);
             UIKit.LE(row1, 80);

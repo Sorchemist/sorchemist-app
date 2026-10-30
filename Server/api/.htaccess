@@ -1,6 +1,6 @@
 # Sorchemist API güvenliği
 Options -Indexes
-<FilesMatch "^(config\.php|config\.sample\.php|lib\.php|.*\.sqlite)$">
+<FilesMatch "^(config\.php|config\.sample\.php|lib\.php|anticheat\.php|.*\.sqlite)$">
     Require all denied
 </FilesMatch>
 # Authorization başlığını PHP'ye ilet (bazı sunucularda gerekli)

@@ -27,6 +27,8 @@ $tables = [
   friend_code {$vc(8)} NOT NULL,
   level INT NOT NULL DEFAULT 1,
   guild_id $big NULL,
+  cheat_strikes INT NOT NULL DEFAULT 0,
+  flagged INT NOT NULL DEFAULT 0,
   created_at $big NOT NULL,
   last_seen $big NOT NULL,
   UNIQUE (email), UNIQUE (google_sub), UNIQUE (friend_code)
@@ -119,6 +121,28 @@ $tables = [
   claimed INT NOT NULL DEFAULT 0,
   PRIMARY KEY (guild_id, week, user_id)
 )$eng",
+"CREATE TABLE IF NOT EXISTS save_history (
+  user_id $big NOT NULL,
+  rev INT NOT NULL,
+  data $text NOT NULL,
+  created_at $big NOT NULL,
+  PRIMARY KEY (user_id, rev)
+)$eng",
+"CREATE TABLE IF NOT EXISTS ledger (
+  id $ai,
+  user_id $big NOT NULL,
+  resource {$vc(24)} NOT NULL,
+  delta INT NOT NULL,
+  reason {$vc(24)} NOT NULL,
+  created_at $big NOT NULL
+)$eng",
+"CREATE TABLE IF NOT EXISTS cheat_log (
+  id $ai,
+  user_id $big NOT NULL,
+  reasons {$vc(255)} NOT NULL,
+  ip {$vc(45)} NULL,
+  created_at $big NOT NULL
+)$eng",
 "CREATE TABLE IF NOT EXISTS rate_limits (
   k CHAR(40) NOT NULL PRIMARY KEY,
   hits INT NOT NULL,
@@ -133,9 +157,17 @@ $indexes = [
   'CREATE INDEX idx_trades_from ON trades (from_id, status)',
   'CREATE INDEX idx_users_guild ON users (guild_id)',
   'CREATE INDEX idx_friends_friend ON friends (friend_id)',
+  'CREATE INDEX idx_ledger_user ON ledger (user_id, id)',
+  'CREATE INDEX idx_cheat_user ON cheat_log (user_id)',
+];
+// Önceki sürümden yükseltme: users tablosuna yeni sütunlar (varsa hata verir, yok sayılır)
+$alters = [
+  'ALTER TABLE users ADD COLUMN cheat_strikes INT NOT NULL DEFAULT 0',
+  'ALTER TABLE users ADD COLUMN flagged INT NOT NULL DEFAULT 0',
 ];
 
 foreach ($tables as $sql) db()->exec($sql);
+foreach ($alters as $sql) { try { db()->exec($sql); } catch (PDOException $e) { /* zaten var */ } }
 foreach ($indexes as $sql) { try { db()->exec($sql); } catch (PDOException $e) { /* zaten var */ } }
 
 out(['installed' => true, 'driver' => db_driver()]);

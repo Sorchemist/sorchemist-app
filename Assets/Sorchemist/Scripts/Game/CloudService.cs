@@ -41,6 +41,8 @@ namespace Sorchemist.Game
         bool _dirty;
         float _uploadTimer;
         bool _uploading;
+        bool _rejected;          // son yükleme hile koruması tarafından reddedildi
+        bool _rejectShown;
 
         GameManager G { get { return GameManager.I; } }
 
@@ -60,8 +62,16 @@ namespace Sorchemist.Game
         // =================================================================
         // Ham API çağrısı
         // =================================================================
+        // Sunucu, harcanan iksirleri son bulut kaydına göre kontrol eder: bu işlemlerden önce bekleyen ilerleme yüklenir
+        static readonly HashSet<string> SpendActions = new HashSet<string> { "gift_send", "trade_offer", "trade_accept", "guild_contribute" };
+
         public void Call(string action, Dictionary<string, object> body, Action<JNode> ok, Action<string> err = null)
         {
+            if (SpendActions.Contains(action) && LoggedIn && _dirty && !_uploading && !_rejected)
+            {
+                Upload(false, uploaded => StartCoroutine(Send(action, body ?? new Dictionary<string, object>(), ok, err)));
+                return;
+            }
             StartCoroutine(Send(action, body ?? new Dictionary<string, object>(), ok, err));
         }
 
@@ -79,12 +89,19 @@ namespace Sorchemist.Game
                 yield return req.SendWebRequest();
 
                 var res = JNode.From(req.downloadHandler != null ? req.downloadHandler.text : null);
-                if (!res.IsNull && res["ok"].Bool) { if (ok != null) ok(res); yield break; }
+                if (!res.IsNull && res["ok"].Bool)
+                {
+                    // Hediye/takas/lonca hareketi sunucu defterine yazıldı: kayıt bu hareketi içerdiğini bilsin
+                    int lid = res["ledgerId"].Int;
+                    if (lid > G.State.LedgerId) G.State.LedgerId = lid;
+                    if (ok != null) ok(res);
+                    yield break;
+                }
 
                 string code = !res.IsNull && res["error"].Str != null ? res["error"].Str : "network";
                 if (code == "session_expired" || code == "not_logged_in") { ClearSession(); }
                 if (err != null) err(code);
-                else if (code != "conflict") G.Toast(ErrorText(code));
+                else if (code != "conflict" && code != "save_rejected") G.Toast(ErrorText(code));
             }
         }
 
@@ -119,6 +136,9 @@ namespace Sorchemist.Game
                 case "quest_not_done": return Loc.T("Lonca görevi henüz bitmedi.", "The guild quest isn't finished yet.");
                 case "nothing_to_claim": return Loc.T("Alınacak ödül yok (katkı vermiş olmalısın).", "Nothing to claim (you must have contributed).");
                 case "google_not_configured": return Loc.T("Google ile giriş sunucuda henüz ayarlanmadı.", "Google sign-in isn't set up on the server yet.");
+                case "not_enough_potions": return Loc.T("Sunucudaki kaydına göre bu iksirden yeterince yok. Biraz sonra tekrar dene.", "According to your cloud save you don't have enough of this potion. Try again in a moment.");
+                case "account_flagged": return Loc.T("Hesabın şüpheli kayıtlar yüzünden işaretlendi: hediye, takas ve lonca bağışı kapalı.", "Your account was flagged for suspicious saves: gifts, trades and guild donations are disabled.");
+                case "save_rejected": return Loc.T("Bu kayıt buluta kabul edilmedi (oyun kurallarıyla uyuşmuyor).", "This save was not accepted by the cloud (it doesn't match the game rules).");
                 case "server_not_configured": return Loc.T("Sunucu henüz kurulmadı.", "The server isn't set up yet.");
                 default: return Loc.T("Bir sorun oldu: ", "Something went wrong: ") + code;
             }
@@ -168,7 +188,11 @@ namespace Sorchemist.Game
             PlayerPrefs.SetString(KName, u["name"].Str ?? "");
             PlayerPrefs.SetString(KCode, u["friendCode"].Str ?? "");
             PlayerPrefs.SetInt(KUid, u["id"].Int);
+            Flagged = u["flagged"].Bool;
         }
+
+        /// <summary>Hesap hile koruması tarafından işaretlendi mi (sunucudan son öğrenilen).</summary>
+        public bool Flagged { get; private set; }
 
         public void RefreshMe(Action done = null)
         {
@@ -251,6 +275,17 @@ namespace Sorchemist.Game
                 Loc.T("Bu cihazdakini kullan", "Keep this device's"), () => Upload(true, null));
         }
 
+        void ShowRejected()
+        {
+            ChoiceDialog.Show(Loc.T("Kayıt kabul edilmedi", "Save not accepted"),
+                Loc.T("Bu cihazdaki oyun, buluttaki son kayıttan beri geçen sürede oyun kurallarıyla mümkün olmayan bir ilerleme gösteriyor " +
+                      "(ya da kayıt dosyası elle değiştirilmiş). Bu yüzden buluta kaydedilmedi.\n\nBuluttaki son geçerli kayda dönebilir ya da şimdilik bu cihazda devam edebilirsin.",
+                      "The game on this device shows progress that isn't possible under the game rules in the time since your last cloud save " +
+                      "(or the save file was edited). So it wasn't saved to the cloud.\n\nYou can return to your last valid cloud save or keep playing on this device for now."),
+                Loc.T("Buluttaki kayda dön", "Load cloud save"), () => Call("save_get", null, r => { if (!r["save"].IsNull) ApplyCloudSave(r["save"]); }),
+                Loc.T("Şimdilik devam et", "Keep playing"), () => { });
+        }
+
         static PlayerState TryUnpack(string data)
         {
             try { return JsonUtility.FromJson<PlayerState>(CloudData.Unpack(data)); } catch (Exception) { return null; }
@@ -265,6 +300,7 @@ namespace Sorchemist.Game
             st.Language = (int)Loc.Current;
             G.LoadState(st);
             _dirty = false;
+            _rejected = false;
             G.Toast(Loc.T("Buluttaki oyunun yüklendi!", "Your cloud save has been loaded!"));
         }
 
@@ -289,6 +325,7 @@ namespace Sorchemist.Game
             Call("save_put", body, r =>
             {
                 _uploading = false;
+                _rejected = false;
                 s.CloudUserId = UserId;
                 s.CloudRev = r["rev"].Int;
                 SaveService.Save(s);
@@ -301,6 +338,13 @@ namespace Sorchemist.Game
                 {
                     // Başka bir cihaz daha yeni bir kayıt yüklemiş: oyuncuya sor
                     Call("save_get", null, r2 => { if (!r2["save"].IsNull) AskWhichSave(r2["save"]); }, x => { });
+                }
+                else if (e == "save_rejected")
+                {
+                    // Hile koruması: sürekli tekrar denemek yerine yarım saat bekle (geçen süre arttıkça sınırlar da genişler)
+                    _rejected = true;
+                    _uploadTimer = -1800f;
+                    if (!_rejectShown || done != null) { _rejectShown = true; ShowRejected(); }
                 }
                 else if (done != null) G.Toast(ErrorText(e));
                 if (done != null) done(false);
