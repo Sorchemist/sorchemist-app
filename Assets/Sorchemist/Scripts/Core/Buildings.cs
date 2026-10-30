@@ -55,11 +55,16 @@ namespace Sorchemist.Core
             return (int)Math.Round(baseCost * Math.Pow(2.1, fromLevel - 1));
         }
 
-        /// <summary>Bina başına dakikalık altın üretimi (yalnızca oyun açıkken).</summary>
+        /// <summary>Bina başına dakikalık pasif altın üretimi (yalnızca oyun açıkken). Seviye başına saatte 0,6 altın.</summary>
+        public const float GoldPerLevelPerMinute = 0.01f;
+
         public static float GoldPerMinute(string id, int level)
         {
-            return id == Tower ? 0 : level;
+            return id == Tower ? 0 : level * GoldPerLevelPerMinute;
         }
+
+        /// <summary>Saatlik pasif altın (arayüzde gösterilir).</summary>
+        public static float GoldPerHour(string id, int level) { return GoldPerMinute(id, level) * 60f; }
 
         // Hangi deneyi hangi bina, kaçıncı seviyede öğretir
         public static readonly List<CompoundUnlock> Unlocks = new List<CompoundUnlock>

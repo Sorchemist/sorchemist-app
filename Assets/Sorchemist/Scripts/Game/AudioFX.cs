@@ -4,7 +4,7 @@ using UnityEngine;
 
 namespace Sorchemist.Game
 {
-    public enum Sfx { Click, Bubble, Pop, Boom, Chime, Sizzle, Fail, Collect, LevelUp }
+    public enum Sfx { Click, Bubble, Pop, Boom, Chime, Sizzle, Fail, Collect, LevelUp, Coins }
 
     public class AudioFX : MonoBehaviour
     {
@@ -12,14 +12,18 @@ namespace Sorchemist.Game
         public bool Enabled = true;
 
         const int Rate = 44100;
-        AudioSource _src;
+        AudioSource _src, _buildingSrc;
         AudioClip[] _clips;
+        readonly System.Collections.Generic.Dictionary<string, AudioClip> _loaded = new System.Collections.Generic.Dictionary<string, AudioClip>();
+        const string Folder = "SorchemistSfx/";
 
         void Awake()
         {
             I = this;
             _src = gameObject.AddComponent<AudioSource>();
             _src.playOnAwake = false;
+            _buildingSrc = gameObject.AddComponent<AudioSource>();
+            _buildingSrc.playOnAwake = false;
             int n = System.Enum.GetValues(typeof(Sfx)).Length;
             _clips = new AudioClip[n];
             _clips[(int)Sfx.Click] = Make("click", 0.05f, (t, i) => Mathf.Sin(2 * Mathf.PI * 1400 * t) * Env(t, 0.05f, 60));
@@ -48,6 +52,8 @@ namespace Sorchemist.Game
                 int k = Mathf.Min(3, (int)(t / 0.15f));
                 return Mathf.Sin(2 * Mathf.PI * notes[k] * t) * 0.35f * Env(t, 0.9f, 3);
             });
+            // Kayıtlı (önceden üretilmiş) gerçekçi sikke sesi; yoksa basit "şing"
+            _clips[(int)Sfx.Coins] = Load("coins") ?? _clips[(int)Sfx.Collect];
         }
 
         static float Env(float t, float len, float k) { return Mathf.Exp(-k * t) * Mathf.Clamp01((len - t) * 50f); }
@@ -79,6 +85,28 @@ namespace Sorchemist.Game
             var c = AudioClip.Create("boom", n, 1, Rate, false);
             c.SetData(d, 0);
             return c;
+        }
+
+        AudioClip Load(string key)
+        {
+            AudioClip c;
+            if (_loaded.TryGetValue(key, out c)) return c;
+            c = Resources.Load<AudioClip>(Folder + key);
+            _loaded[key] = c;
+            return c;
+        }
+
+        /// <summary>Binaya dokununca o binaya özgü kısa ses (en fazla 2 sn). Yenisi gelince öncekini keser.</summary>
+        public static void PlayBuilding(string buildingId, float volume = 0.85f)
+        {
+            if (I == null || !I.Enabled) return;
+            var c = I.Load("b_" + buildingId);
+            if (c == null) { Play(Sfx.Click, 0.6f); return; }
+            I._buildingSrc.Stop();
+            I._buildingSrc.clip = c;
+            I._buildingSrc.volume = volume;
+            I._buildingSrc.pitch = 1f;
+            I._buildingSrc.Play();
         }
 
         public static void Play(Sfx s, float volume = 1f, float pitchJitter = 0f)

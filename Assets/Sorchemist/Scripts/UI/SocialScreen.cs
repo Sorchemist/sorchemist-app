@@ -469,7 +469,7 @@ namespace Sorchemist.UI
                     State.Knowledge += x["knowledge"].Int;
                     G.HandleLevelUps(State.AddXp(x["xp"].Int));
                     G.SaveNow(); Cloud.MarkDirty(); G.RefreshCurrent();
-                    AudioFX.Play(Sfx.LevelUp);
+                    AudioFX.Play(Sfx.Coins);
                     G.Toast(Loc.T("Lonca ödülü: +", "Guild reward: +") + x["gold"].Int + Loc.T(" altın, +", " gold, +") + x["xp"].Int + " XP, +" + x["knowledge"].Int + Loc.T(" Bilgi", " Knowledge"));
                     Refresh();
                 }));

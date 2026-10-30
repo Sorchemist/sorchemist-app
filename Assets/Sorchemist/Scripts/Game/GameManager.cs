@@ -130,8 +130,11 @@ namespace Sorchemist.Game
             SafeRoot.gameObject.AddComponent<SafeArea>();
 
             const float top = 110, rail = 220;   // üst bilgi çubuğu + sol menü
+            TopInset = top;
+            // Ekranlar bütün alanı kullanır; köy haritası tam ekran, diğer ekranlar üst çubuk ve menü kadar içeride başlar
             Content = UIKit.Rect("Content", SafeRoot);
-            UIKit.Stretch(Content, rail, top, 0, 0);
+            UIKit.Stretch(Content);
+            _leftInset = rail;
 
             _hud = SafeRoot.gameObject.AddComponent<HudBar>();
             _hud.Build(SafeRoot, top, rail);
@@ -151,9 +154,21 @@ namespace Sorchemist.Game
             var rt = UIKit.Rect(name, Content);
             UIKit.Stretch(rt);
             var s = rt.gameObject.AddComponent<T>();
+            if (!s.FullBleed) { UIKit.Stretch(rt, _leftInset, TopInset, 0, 0); _insetScreens.Add(rt); }
             s.Build();
             rt.gameObject.SetActive(false);
             _screens[id] = s;
+        }
+
+        public float TopInset { get; private set; }
+        float _leftInset;
+        readonly List<RectTransform> _insetScreens = new List<RectTransform>();
+
+        /// <summary>Sol menü açılıp kapanırken tam ekran olmayan ekranların sol kenarını kaydırır.</summary>
+        public void SetLeftInset(float left)
+        {
+            _leftInset = left;
+            foreach (var rt in _insetScreens) rt.offsetMin = new Vector2(left, rt.offsetMin.y);
         }
 
         public void Show(ScreenId id)

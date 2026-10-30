@@ -25,7 +25,7 @@ namespace Sorchemist.UI
         {
             _top = top; _railW = rail;
             // ----- Sol menü (yatay ekran) -----
-            var nav = UIKit.Img(root, "SideRail", Theme.Panel);
+            var nav = UIKit.Img(root, "SideRail", new Color(Theme.Panel.r, Theme.Panel.g, Theme.Panel.b, 0.9f));
             var nrt = nav.rectTransform;
             nrt.anchorMin = Vector2.zero; nrt.anchorMax = new Vector2(0, 1);
             nrt.pivot = new Vector2(0, 0.5f); nrt.sizeDelta = new Vector2(rail, 0); nrt.anchoredPosition = Vector2.zero;
@@ -46,7 +46,9 @@ namespace Sorchemist.UI
             AddTab(col, ScreenId.Social, Loc.T("Topluluk", "Community"));
 
             // ----- Üst çubuk -----
-            var bar = UIKit.Img(root, "TopBar", new Color(0.08f, 0.06f, 0.14f, 0.92f));
+            // Üst çubuk saydam: köy haritası arkasında tam ekran görünür, yalnızca çerçeveler üstte yüzer
+            var bar = UIKit.Img(root, "TopBar", new Color(0, 0, 0, 0));
+            bar.raycastTarget = false;
             var brt = bar.rectTransform;
             brt.anchorMin = new Vector2(0, 1); brt.anchorMax = new Vector2(1, 1);
             brt.pivot = new Vector2(0.5f, 1); brt.offsetMin = new Vector2(rail, -top); brt.offsetMax = Vector2.zero;
@@ -115,9 +117,10 @@ namespace Sorchemist.UI
         // ----- Üç çizgili menü butonu -----
         void BuildBurger(RectTransform root)
         {
-            var bg = UIKit.Img(root, "MenuButton", new Color(0.08f, 0.06f, 0.14f, 0.96f));
+            var bg = UIKit.Img(root, "MenuButton", new Color(0.08f, 0.06f, 0.14f, 0.78f), UIKit.Rounded);
+            bg.type = Image.Type.Sliced;
             _burger = bg.rectTransform;
-            UIKit.Place(_burger, new Vector2(0, 1), new Vector2(0, 0), new Vector2(BurgerW, _top), new Vector2(0, 1));
+            UIKit.Place(_burger, new Vector2(0, 1), new Vector2(8, -8), new Vector2(BurgerW - 12, _top - 16), new Vector2(0, 1));
             var btn = bg.gameObject.AddComponent<Button>();
             btn.targetGraphic = bg;
             btn.onClick.AddListener(() => { AudioFX.Play(Sfx.Click, 0.6f); SetMenuOpen(!_open); });
@@ -158,8 +161,7 @@ namespace Sorchemist.UI
             _rail.anchoredPosition = new Vector2(Mathf.Lerp(-_railW, 0, t), 0);
             float left = Mathf.Lerp(BurgerW, _railW, t);
             _bar.offsetMin = new Vector2(left, -_top);
-            var content = GameManager.I != null ? GameManager.I.Content : null;
-            if (content != null) content.offsetMin = new Vector2(Mathf.Lerp(0, _railW, t), content.offsetMin.y);
+            if (GameManager.I != null) GameManager.I.SetLeftInset(Mathf.Lerp(0, _railW, t));
         }
 
         void AddTab(RectTransform row, ScreenId id, string label)

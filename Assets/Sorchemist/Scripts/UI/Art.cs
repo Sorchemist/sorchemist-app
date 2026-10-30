@@ -18,8 +18,8 @@ namespace Sorchemist.UI
         public static Sprite Get(string key)
         {
             if (string.IsNullOrEmpty(key)) return null;
-            // İngilizcede element ikonlarının İngilizce yazılı kopyası (el_8_en) varsa onu kullan
-            if (Loc.En && key.StartsWith("el_") && !key.EndsWith("_en"))
+            // İngilizcede yazı içeren görsellerin İngilizce kopyası (el_8_en, house_bal_en) varsa onu kullan
+            if (Loc.En && (key.StartsWith("el_") || key.StartsWith("house_")) && !key.EndsWith("_en"))
             {
                 var en = Get(key + "_en");
                 if (en != null) return en;

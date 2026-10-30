@@ -30,7 +30,7 @@ const MAX_ELEMENT_STACK = 99999;
 const MAX_QUESTS = 2000;
 
 // ----- Zamana bağlı cömert üst sınırlar -----
-const GOLD_PER_MIN = 400;        // oyundaki en yüksek gelir 24 ev × 12 × 1,25 = 360/dk
+const GOLD_PER_MIN = 10;         // pasif gelir en fazla 24 ev × 12 × 0,01 × 1,25 = 3,6/dk
 const XP_PER_MIN = 300;
 const KNOWLEDGE_PER_MIN = 40;    // en yüksek ~30/dk
 const QUESTS_PER_MIN = 6;

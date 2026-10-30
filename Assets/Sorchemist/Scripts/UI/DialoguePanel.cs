@@ -117,6 +117,10 @@ namespace Sorchemist.UI
             var advance = box.gameObject.AddComponent<Button>();
             advance.transition = Selectable.Transition.None;
             advance.onClick.AddListener(Next);
+            // Ekranın herhangi bir yerine (kutunun dışına da) dokunmak yazıyı anında tamamlar
+            var skip = root.gameObject.AddComponent<Button>();
+            skip.transition = Selectable.Transition.None;
+            skip.onClick.AddListener(Next);
 
             ShowLine();
         }
@@ -165,7 +169,6 @@ namespace Sorchemist.UI
             for (int i = 0; i <= line.Length; i++)
             {
                 _text.text = line.Substring(0, i);
-                if (i % 3 == 0 && i < line.Length && line[i] != ' ') AudioFX.Play(Sfx.Click, 0.15f, 0.3f);
                 yield return new WaitForSeconds(0.022f);
             }
             _typingDone = true;

@@ -12,6 +12,9 @@ namespace Sorchemist.UI
         protected PlayerState State { get { return GameManager.I.State; } }
         public RectTransform Root { get { return (RectTransform)transform; } }
 
+        /// <summary>true: ekran bütün ekranı kaplar (üst çubuk ve menü üstünde yüzer). false: üst çubuğun altında ve menünün sağında kalır.</summary>
+        public virtual bool FullBleed { get { return false; } }
+
         public abstract void Build();
         public virtual void Refresh() { }
         public virtual void OnShow() { Refresh(); }

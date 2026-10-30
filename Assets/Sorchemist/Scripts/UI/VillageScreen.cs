@@ -97,6 +97,8 @@ namespace Sorchemist.UI
             return (gx + gy) % 2 == 0 ? Theme.Grass : Theme.GrassDark;
         }
 
+        public override bool FullBleed { get { return true; } }
+
         public override void Build()
         {
             var bg = UIKit.Img(Root, "Sky", UIKit.Hex("#1E3A2C"));
@@ -204,13 +206,13 @@ namespace Sorchemist.UI
             // Uzaklaştırılmış görünüm; köy ekrandan büyük, gezinerek keşfedilir
             content.localScale = Vector3.one * Zoom;
             // Haritayı kuleye ortala
-            content.anchoredPosition = new Vector2(0, -IsoToLocal(LabPos.x, LabPos.y).y * Zoom - 470);
+            content.anchoredPosition = new Vector2(0, -IsoToLocal(LabPos.x, LabPos.y).y * Zoom - 470 - G.TopInset * 0.5f);
 
             // Görev afişi (ekranın üstünde sabit)
             var banner = UIKit.Btn(Root, "QuestBanner", "", UIKit.Hex("#8E44AD"), OpenQuest, 34);
             UIKit.Wood(banner);
             _questBanner = (RectTransform)banner.transform;
-            UIKit.Place(_questBanner, new Vector2(0.5f, 1), new Vector2(0, -70), new Vector2(1000, 110));
+            UIKit.Place(_questBanner, new Vector2(0.5f, 1), new Vector2(0, -70 - G.TopInset), new Vector2(1000, 110));
             _questText = UIKit.LabelOf(banner);
 
             var hint = UIKit.Txt(Root, "Hint", Loc.T("Haritada gezin • Evlere dokun: yükselt, sohbet et • Gizemli Kutu'yu kaçırma", "Explore the map • Tap houses to upgrade or chat • Don't miss the Mystery Box"), 26, new Color(1, 1, 1, 0.75f));
@@ -223,7 +225,7 @@ namespace Sorchemist.UI
                 AudioFX.Play(Sfx.Click);
                 HudBar.OpenSettings();
             }, 30));
-            UIKit.Place((RectTransform)set.transform, new Vector2(1, 1), new Vector2(-20, -20), new Vector2(230, 96), new Vector2(1, 1));
+            UIKit.Place((RectTransform)set.transform, new Vector2(1, 1), new Vector2(-20, -20 - G.TopInset), new Vector2(230, 96), new Vector2(1, 1));
         }
 
         // Nesne kökü: alt orta noktası karonun üst yüz merkezinin biraz önünde
@@ -344,7 +346,7 @@ namespace Sorchemist.UI
                 win.gameObject.AddComponent<Bouncer>().Glow = true;
             }
             AddNameplate(rt, Loc.T("Aqualf'in Kulesi", "Aqualf's Tower"), Theme.Accent, -10);
-            tower.gameObject.AddComponent<Button>().onClick.AddListener(() => OpenBuilding(BuildingDatabase.Tower));
+            tower.gameObject.AddComponent<Button>().onClick.AddListener(() => { AudioFX.PlayBuilding(BuildingDatabase.Tower); OpenBuilding(BuildingDatabase.Tower); });
             _towerView = rt;
         }
 
@@ -405,7 +407,8 @@ namespace Sorchemist.UI
             }
             var r = Session.OpenMystery(now);
             if (r == null) return;
-            AudioFX.Play(Sfx.Chime);
+            AudioFX.Play(Sfx.Chime, 0.6f);
+            AudioFX.Play(Sfx.Coins);
             Haptics.Bump();
             FX.I.Burst(_objects, Theme.Gold, _mystery.anchoredPosition + Vector2.up * 120, 60, 900);
             FX.I.Flash(G.Overlay, new Color(1f, 0.9f, 0.5f, 0.6f), 0.6f);
@@ -423,7 +426,7 @@ namespace Sorchemist.UI
         // ---------- Etkileşimler ----------
         void TapHouse(VillagerData v)
         {
-            AudioFX.Play(Sfx.Click, 0.6f);
+            AudioFX.PlayBuilding(v.Id);
             OpenBuilding(v.Id);
         }
 
@@ -491,8 +494,8 @@ namespace Sorchemist.UI
             else
             {
                 info = "<b>" + v.NameTr + "</b>\n" +
-                    Loc.T("<b>Seviye ", "<b>Level ") + lv + " / " + BuildingDatabase.MaxLevel + Loc.T("</b>   Altın: <b>", "</b>   Gold: <b>") + BuildingDatabase.GoldPerMinute(id, lv) + Loc.T("/dk</b>", "/min</b>") +
-                    (lv < BuildingDatabase.MaxLevel ? " <color=#7CF2C8>(→ " + BuildingDatabase.GoldPerMinute(id, lv + 1) + ")</color>" : "") + "\n";
+                    Loc.T("<b>Seviye ", "<b>Level ") + lv + " / " + BuildingDatabase.MaxLevel + Loc.T("</b>   Altın: <b>", "</b>   Gold: <b>") + BuildingDatabase.GoldPerHour(id, lv).ToString("0.#") + Loc.T("/saat</b>", "/hour</b>") +
+                    (lv < BuildingDatabase.MaxLevel ? " <color=#7CF2C8>(→ " + BuildingDatabase.GoldPerHour(id, lv + 1).ToString("0.#") + ")</color>" : "") + "\n";
                 var unlocks = BuildingDatabase.UnlocksOf(id).ToList();
                 if (unlocks.Count > 0)
                 {
@@ -590,7 +593,7 @@ namespace Sorchemist.UI
             string why = Session.CanUpgrade(id);
             if (why != null) { G.Toast(why); return; }
             Session.StartUpgrade(id, GameManager.Now);
-            AudioFX.Play(Sfx.Collect);
+            AudioFX.Play(Sfx.Coins, 0.8f);
             RectTransform view = id == BuildingDatabase.Tower ? _towerView : (_houseViews.ContainsKey(id) ? _houseViews[id] : null);
             if (view != null) FX.I.Smoke(_objects, UIKit.Hex("#D9C9A8"), view.anchoredPosition + Vector2.up * 120, 14);
             G.Toast(BuildingDatabase.NameTr(id) + Loc.T(" yükseltmesi başladı: ", " upgrade started: ") + BuildingDatabase.FormatDuration(Session.UpgradeSecondsLeft(id, GameManager.Now)));
@@ -642,7 +645,8 @@ namespace Sorchemist.UI
 
             if (o.Success)
             {
-                AudioFX.Play(Sfx.Chime);
+                AudioFX.Play(Sfx.Chime, 0.6f);
+                if (o.Gold > 0) AudioFX.Play(Sfx.Coins);
                 FX.I.Burst(_objects, Theme.Gold, at, 50, 800);
                 FX.I.FloatText(_objects, "+" + o.Gold + Loc.T(" altın", " gold"), Theme.Gold, at + Vector2.up * 120);
                 string rewards = o.RawRewards.Length > 0 ? Loc.T("\n\nÖdül: ", "\n\nReward: ") + string.Join(", ", Array.ConvertAll(o.RawRewards, r => RawMaterialDatabase.Get(r).NameTr)) : "";

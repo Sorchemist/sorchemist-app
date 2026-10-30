@@ -69,7 +69,9 @@ static class CoreTests
         Check(g.CompleteUpgrades(now + 59).Count == 0 && g.CompleteUpgrades(now + 60).Count == 1 && g.State.BuildingLevel("sucu") == 2, "Süre dolunca Sv.2");
         int gold0 = g.State.Gold;
         for (int i = 0; i < 60; i++) g.TickOnline(1f);
-        Check(g.State.Gold > gold0, "Oyun açıkken altın birikir");
+        Check(g.State.Gold - gold0 <= 1, "Pasif altın yavaş: 1 dakikada en fazla 1 altın");
+        for (int i = 0; i < 2400; i++) g.TickOnline(5f);
+        Check(g.State.Gold > gold0, "Oyun açıkken altın birikir (3 saatte)");
         Check(g.State.CauldronCapacity == 6, "Başlangıç kapasitesi 6");
 
         Console.WriteLine("Ayrıştırma ve pasifler");
