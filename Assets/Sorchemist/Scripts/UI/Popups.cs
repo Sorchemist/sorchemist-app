@@ -183,8 +183,15 @@ namespace Sorchemist.UI
                     CompoundDatabase.EffectNameTr(c.Effect) + "</color></size>",
                     Theme.PanelLight, () => { UnityEngine.Object.Destroy(modal.gameObject); onPick(id); }, 36);
                 UIKit.LE(b, 120);
+                var pArt = Art.Get(Art.PotionKey(c));
+                if (pArt != null)
+                {
+                    var pi = Art.Image(b.transform, "Potion", pArt);
+                    UIKit.Place(pi.rectTransform, new Vector2(0, 0.5f), new Vector2(55, 0), new Vector2(84, 96));
+                    pi.preserveAspect = true; pi.raycastTarget = false;
+                }
                 var dot = UIKit.Img(b.transform, "Dot", UIKit.Hex(c.ColorHex), UIKit.Circle);
-                UIKit.Place(dot.rectTransform, new Vector2(0, 0.5f), new Vector2(50, 0), new Vector2(60, 60));
+                UIKit.Place(dot.rectTransform, new Vector2(0, 0.5f), pArt != null ? new Vector2(88, -32) : new Vector2(50, 0), pArt != null ? new Vector2(26, 26) : new Vector2(60, 60));
             }
             if (!any)
             {

@@ -352,33 +352,32 @@ namespace Sorchemist.Core
 
         // ===================== Köylüler =====================
         // id -> { ad, meslek, sohbet cümleleri... }
+        // id -> { meslek (ad), unvan, bina adı, sohbet cümleleri... }
         static readonly Dictionary<string, string[]> Villagers = new Dictionary<string, string[]>
         {
-            // id -> { meslek (aynı zamanda ad ve bina adı), sohbet cümleleri... }
-            { "fistik", new[] { "Farmer", "The soil is generous, but if it's sour nothing grows.", "The pumpkins will be huge this year, I can feel it!" } },
-            { "bal", new[] { "Baker", "Baking soda makes dough rise; yeast makes you patient.", "A good oven is half of a good loaf." } },
-            { "pirtik", new[] { "Shepherd", "My sheep listen to me. The goats don't.", "I always sneeze when I shear wool!" } },
-            { "tokmak", new[] { "Blacksmith", "Iron rusts, steel endures. The difference is carbon!", "At the anvil, rhythm is everything: clang, clang, clang!" } },
-            { "ebe", new[] { "Healer", "A potion for every wound, a tea for every trouble.", "Keep a wound clean and it's half healed already." } },
-            { "fener", new[] { "Gamekeeper", "Eyes glow in the forest at night. Mostly owls. Mostly...", "Tracking takes patience, just like alchemy." } },
-            { "zeytin", new[] { "Innkeeper", "Fruit soda at the inn today. The fizz comes from you!", "Travellers bring news from faraway lands." } },
-            { "kopuk", new[] { "Launderer", "Soap strips grease, and I strip stains!", "A windy day is a holiday for laundry." } },
-            { "filiz", new[] { "Forester", "Every tree was once a seed.", "I always keep an eye out for smoke so the forest never burns." } },
-            { "ruzgar", new[] { "Miller", "Wind blows, flour flows. No wind, no bread.", "As long as the millstone turns, the village eats." } },
-            { "oduncu", new[] { "Woodcutter", "These oaks are a hundred years old. Even their ashes are rich - full of potassium!", "Sharp axe, dry wood. Winter is ready!" } },
-            { "marangoz", new[] { "Carpenter", "Need a new shelf for your cauldron? Measure, mark, then cut!", "Nothing beats the smell of sawdust." } },
-            { "tasusta", new[] { "Stonemason", "Did you know? Heat limestone and you get quicklime.", "There's a statue hiding inside every stone." } },
-            { "derici", new[] { "Tanner", "Softening leather takes salt and patience.", "You get used to the smell. I think." } },
-            { "komurcu", new[] { "Charcoal Burner", "Charcoal is pure carbon! I look a bit like carbon myself.", "Every fire in the village burns my charcoal." } },
-            { "kunduraci", new[] { "Cobbler", "Your shoe has a hole, Aqualf. You're leaking like a drop!", "Every step is a story." } },
-            { "asci", new[] { "Cook", "The kitchen is a lab too! Salt, baking soda, vinegar... all chemistry.", "The secret of soup: a pinch of salt." } },
-            { "sucu", new[] { "Water Carrier", "The well water is crystal clear. H2O and nothing else!", "My buckets are always full, and so is my heart." } },
-            { "terzi", new[] { "Tailor", "I dye cloth blue with blue vitriol and red with rust.", "Measure, measure, then measure again." } },
-            { "dokumaci", new[] { "Weaver", "Threads of every colour on my loom... and I get the dyes from you!", "One more stitch, one more stitch." } },
-            { "balikci", new[] { "Fisher", "The river is generous today. And sea water is full of salt, just so you know.", "Patience is a fisher's best bait." } },
-            { "comlekci", new[] { "Potter", "Clay and sand join in the fire to make a sturdy pot.", "Not a day goes by without mud on my hands." } },
-            { "berber", new[] { "Barber", "Is your hair still sooty? Come, let me fix it!", "All the village gossip gets told in this chair." } },
-            { "arici", new[] { "Beekeeper", "My bees love flowers; you love potions.", "Honey is nature's own alchemy." } },
+            { "forge", new[] { "Blacksmith", "Anvil Master", "Blacksmith Forge", "Iron rusts, steel endures. The difference is carbon!", "Rhythm is everything at the anvil: clang, clang, clang!" } },
+            { "glasshouse", new[] { "Botanist", "Greenhouse Sprout", "Glasshouse Conservatory", "Every plant needs a little water, a little light and lots of patience.", "The mushrooms in the glasshouse glow at night. Phosphorus, maybe?" } },
+            { "watermill", new[] { "Miller", "Wheel Captain", "Arcane Watermill", "The river flows, the wheel turns, the water is purified. H2O, pure and clean!", "With every turn of the wheel a little magic mixes into the water." } },
+            { "mine", new[] { "Miner", "Pickaxe Vein", "Gem Mine", "Salt, sulfur, quartz inside the rock... The earth is a treasure chest!", "If my candle goes out, I turn back. That's the rule." } },
+            { "well", new[] { "Wellkeeper", "Essence Strainer", "Stone Essence Well", "Mana droplets rise from the bottom of the well. The pink ones are the sweetest.", "A bucket of water, a ladle of essence. All measured." } },
+            { "workshop", new[] { "Chemist", "Vial Steam", "Potion & Steam Workshop", "Acid goes into water, never water into acid! Forget it and lose your eyebrows.", "My tubes are every colour. Each one is a different experiment." } },
+            { "healer", new[] { "Herbalist", "Healing Leaf", "Herbalist & Healer Hut", "A salve for every wound, a herb for every ailment.", "Keep wounds clean and half of them heal themselves." } },
+            { "crystal", new[] { "Lens Cutter", "Prism Eye", "Crystal Cutter & Lens House", "Sand melts in fire into glass; glass, cut with skill, becomes a lens.", "Light splits into seven colours in a crystal. I never tire of it!" } },
+            { "library", new[] { "Librarian", "Rune Keeper", "Ancient Rune Library", "The Periodic Table is a book; every row is a family.", "If the runes glow, someone has opened a forbidden page." } },
+            { "market", new[] { "Merchant", "Golden Scales", "Alchemy Trade Market", "Leather, cloth, shoes, crystals... Whatever you seek, it's at the market!", "My scales are honest, and so am I. Mostly." } },
+            { "windmill", new[] { "Windkeeper", "Weather Reader", "Wind & Weather Mill", "When the wind blows we grind flour; when it doesn't, we read the weather.", "I feel the nitrogen, oxygen and argon in the air on my sails." } },
+            { "observatory", new[] { "Astronomer", "Star Seeker", "Celestial Observatory", "Helium was found in the Sun before it was found on Earth. The sky is a laboratory!", "My telescope says there's a storm coming tomorrow." } },
+            { "portal", new[] { "Portal Warden", "Rift Guardian", "Arcane Portal Gate", "Heavy, radioactive ores come through the gate. Be careful.", "Stars swirl inside the vortex. Don't stare, you'll get dizzy." } },
+            { "dock", new[] { "Sky Captain", "Cloud Pilot", "Airship Dock & Port", "My airship flies on helium; hydrogen and fire are no joke!", "Distant kingdoms are waiting for your potions." } },
+            { "hollow", new[] { "Innkeeper", "Root-Home Chef", "Hollow Tree Dwelling", "Hot tea, fresh bread, a cosy bed. Welcome to the Hollow Tree!", "A kitchen is a laboratory too: salt, baking soda, vinegar... all chemistry." } },
+            { "stable", new[] { "Groom", "Ranch Caretaker", "Magical Creature Stable", "The mounts love glowing hay, and their manure smells of ammonia!", "My animals listen to me. The goats don't." } },
+            { "distillery", new[] { "Distiller", "Copper Master", "Copper Distillery Plant", "Boil, evaporate, cool, collect drop by drop. That's distillation.", "My copper pipes are hot; don't touch, it leaves a mark." } },
+            { "smeltery", new[] { "Smelter", "Lava Lord", "Volcanic Magma Smeltery", "Tungsten melts at 3422 degrees. My lava is hotter!", "Coal, wood, lava... My furnace never goes out." } },
+            { "chronos", new[] { "Timekeeper", "Hourglass Savant", "Chronos Hourglass Tower", "Time is an element too; it just has no place on the table.", "While the sand flows, reactions speed up. Good for the impatient." } },
+            { "sporedome", new[] { "Mycologist", "Spore Glow", "Bioluminescent Spore Dome", "My mushrooms glow in the dark: bioluminescence!", "Spores fly everywhere. Sorry if you sneeze." } },
+            { "vault", new[] { "Vault Guardian", "Rune Lock", "Runic Treasure Vault", "There are Philosopher's Stone shards in the vault. I hold the key.", "Dangerous elements stay under lock. That's the rule." } },
+            { "crater", new[] { "Meteor Hunter", "Starfall Seeker", "Starfall Meteorite Crater", "This meteorite came from space; it holds traces not found on Earth.", "My hammer, my magnifier and my patience. The crater awaits." } },
+            { "aviary", new[] { "Courier", "Wind Wing", "Messenger Aviary Tower", "My birds bring new troubles every morning. And feathers.", "You've got mail, Aqualf! Oh, wrong address..." } },
         };
 
         public static void ApplyVillagers(IEnumerable<VillagerData> all)
@@ -387,8 +386,8 @@ namespace Sorchemist.Core
             {
                 string[] t;
                 if (!Villagers.TryGetValue(v.Id, out t)) continue;
-                v.NameEn = t[0]; v.RoleEn = t[0];
-                if (t.Length > 1) { var a = new string[t.Length - 1]; System.Array.Copy(t, 1, a, 0, a.Length); v.AmbientEn = a; }
+                v.NameEn = t[0]; v.RoleEn = t[1]; v.BuildingEn = t[2];
+                if (t.Length > 3) { var a = new string[t.Length - 3]; System.Array.Copy(t, 3, a, 0, a.Length); v.AmbientEn = a; }
             }
         }
 

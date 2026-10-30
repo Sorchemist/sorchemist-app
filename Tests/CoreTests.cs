@@ -1,5 +1,6 @@
 // Çekirdek oyun kuralları için basit testler. Çalıştırmak için: cd Tests && dotnet run
 using System;
+using System.Linq;
 using System.Collections.Generic;
 using Sorchemist.Core;
 
@@ -49,7 +50,7 @@ static class CoreTests
         Check(d.Outcome.Success && s.State.CompletedQuests.Contains("q_thirst"), "Görev tamamlandı");
         Check(s.ActiveQuest.Id != "q_thirst", "Yeni görev geldi");
 
-        // Kilitli deney: kireç taşı (Rüzgar evi Sv.3)
+        // Kilitli deney: kireç taşı (Cevher Madeni Sv.3)
         s.State.AddElement("Ca", 1); s.State.AddElement("C", 1); s.State.AddElement("O", 3);
         var lk = s.StartBrew(A("CaCO3"), now);
         Check(lk.Locked && !lk.Started && s.State.ElementCount("Ca") == 1, "Kilitli deney malzeme harcamaz");
@@ -64,9 +65,11 @@ static class CoreTests
         Check(BuildingDatabase.UpgradeSeconds(12) == 0, "Sv.12 son seviye");
         var g = new GameSession(PlayerState.NewGame(), 7);
         g.State.Gold = 1000;
-        Check(g.StartUpgrade("sucu", now) && g.State.Building("sucu").UpgradeEndsAt == now + 60, "Sucu evi yükseltmesi 1 dk");
-        Check(g.CanUpgrade("derici") != null, "Tek usta: ikinci yükseltme bekler");
-        Check(g.CompleteUpgrades(now + 59).Count == 0 && g.CompleteUpgrades(now + 60).Count == 1 && g.State.BuildingLevel("sucu") == 2, "Süre dolunca Sv.2");
+        Check(g.StartUpgrade("watermill", now) && g.State.Building("watermill").UpgradeEndsAt == now + 60, "Su Değirmeni yükseltmesi 1 dk");
+        Check(g.CanUpgrade("mine") != null, "Tek usta: ikinci yükseltme bekler");
+        Check(g.CompleteUpgrades(now + 59).Count == 0 && g.CompleteUpgrades(now + 60).Count == 1 && g.State.BuildingLevel("watermill") == 2, "Süre dolunca Sv.2");
+        Check(g.CanUpgrade("market") != null && !g.State.IsDistrictOpen("market") && g.State.IsDistrictOpen("forge"), "2. mahalle sisin altında, yükseltilemez");
+        Check(!g.State.IsUnlocked("hcl"), "Sisteki binanın deneyi kapalı");
         int gold0 = g.State.Gold;
         for (int i = 0; i < 60; i++) g.TickOnline(1f);
         Check(g.State.Gold - gold0 <= 1, "Pasif altın yavaş: 1 dakikada en fazla 1 altın");
@@ -85,10 +88,21 @@ static class CoreTests
         Check(g.Equip(PassiveDatabase.Owl) == null && g.State.HasPassive(PassiveDatabase.Owl), "Çıkar-tak çalışır");
 
         Console.WriteLine("Köylüler ve görevler");
+        Check(VillageDatabase.Villagers.Count == 23 && BuildingDatabase.AllIds.Count() == 24, "Simya Kulesi + 23 bina");
         bool namesOk = true;
-        foreach (var v in VillageDatabase.Villagers) if (v.NameTr != v.RoleTr) namesOk = false;
-        Check(namesOk && VillageDatabase.GetVillager("tasusta").NameTr == "Taş Ustası", "Köylü adı = bina/meslek adı");
-        Check(VillageDatabase.Quests.Count == QuestBank.TotalQuests, "Toplam 2000 görev");
+        foreach (var v in VillageDatabase.Villagers) if (string.IsNullOrEmpty(v.NameTr) || string.IsNullOrEmpty(v.RoleTr) || string.IsNullOrEmpty(v.BuildingTr) || v.Group < 1 || v.Group > 4) namesOk = false;
+        Check(namesOk && VillageDatabase.GetVillager("mine").NameTr == "Madenci" && BuildingDatabase.NameTr("forge") == "Demirci Ocağı", "Görevli adı, unvanı, binası ve mahallesi");
+        var perGroup = new int[5];
+        foreach (var v in VillageDatabase.Villagers) perGroup[v.Group]++;
+        Check(perGroup[1] == 5 && perGroup[2] == 6 && perGroup[3] == 6 && perGroup[4] == 6, "Mahalleler: 5+kule, 6, 6, 6");
+        Check(VillageDatabase.Quests.Count == QuestBank.TotalQuests + QuestBank.KeeperProblemCount, "Toplam 2000 + yeni görevlilerin görevleri");
+        bool lvOk = true;
+        foreach (var q in VillageDatabase.Quests) if (q.MinLevel < BuildingDatabase.UnlockLevelOf(q.VillagerId)) lvOk = false;
+        Check(lvOk, "Hiçbir görev mahallesi açılmadan gelmez");
+        var perKeeper = new Dictionary<string, int>();
+        foreach (var q in VillageDatabase.Quests) { int c0; perKeeper.TryGetValue(q.VillagerId, out c0); perKeeper[q.VillagerId] = c0 + 1; }
+        Check(VillageDatabase.Villagers.All(v => perKeeper.ContainsKey(v.Id) && perKeeper[v.Id] >= 8), "Her görevlinin en az 8 görevi var");
+        Check(BuildingDatabase.MapLegacy("bal") == "hollow" && BuildingDatabase.MapLegacy("forge") == "forge", "Eski köy kimlikleri yeni binalara");
         var ids = new HashSet<string>();
         bool genOk = true;
         foreach (var q in VillageDatabase.Quests)
@@ -138,12 +152,34 @@ static class CoreTests
         var ps = new PlayerState { LedgerId = 7, TamperCount = 1 };
         Check(ps.LedgerId == 7 && ps.TamperCount == 1 && PlayerState.NewGame().TamperCount == 0, "Defter numarası ve kurcalama sayacı kayıtta");
 
+        Console.WriteLine("Kayıt taşıma, mevsimler");
+        var old = PlayerState.NewGame();
+        old.Version = 1;
+        old.Buildings.Clear();
+        old.Buildings.Add(new BuildingEntry { Id = "tower", Level = 3 });
+        old.Buildings.Add(new BuildingEntry { Id = "bal", Level = 4 });
+        old.Buildings.Add(new BuildingEntry { Id = "zeytin", Level = 2 });
+        old.Buildings.Add(new BuildingEntry { Id = "sucu", Level = 5, UpgradeEndsAt = 99 });
+        old.SetHouse("pirtik", HouseState.Happy);
+        var ms = new GameSession(old, 5);
+        Check(ms.State.Version == PlayerState.CurrentVersion && ms.State.BuildingLevel("hollow") == 4 && ms.State.Building("watermill").UpgradeEndsAt == 99
+              && ms.State.GetHouse("stable") == HouseState.Happy && !ms.State.Buildings.Any(b => b.Id == "bal"), "Eski köy kaydı kasabaya taşındı");
+        Check(SeasonClock.At(0) == Season.Spring && SeasonClock.At(6 * 3600) == Season.Autumn && SeasonClock.At(13 * 3600) == Season.Winter
+              && SeasonClock.At(19 * 3600) == Season.Storm && SeasonClock.At(20 * 3600) == Season.Spring, "Mevsim döngüsü 6+6+6+2 saat");
+        Check(SeasonClock.NightGlow(0f) == 1f && SeasonClock.NightGlow(0.5f) == 0f && SeasonClock.Clock(12 * 60 + 5) == "12:05", "Gün içi saat ve gece ışıkları");
+        var ss = new GameSession(PlayerState.NewGame(), 9);
+        ss.Clock = () => 6 * 3600 + 10;   // sonbahar
+        long fuelNormal = 8L * CompoundDatabase.Get("ethanol").AtomCount;
+        Check(ss.BrewDuration(CompoundDatabase.Get("ethanol")) == fuelNormal / 2, "Sonbaharda yakıt iksiri yarı sürede");
+        Check(BuildingDatabase.SeasonGoldFactor("forge", Season.Autumn) > 1f && BuildingDatabase.SeasonGoldFactor("forge", Season.Storm) < 1f, "Mevsim bina üretimini etkiler");
+        Check(BuildingDatabase.ChestTier(1) == 1 && BuildingDatabase.ChestTier(12) == 6, "Gizemli sandık kule seviyesiyle büyür");
+
         Console.WriteLine("Dil (İngilizce)");
         Loc.Current = Lang.En;
         Check(ElementDatabase.Get("Fe").NameTr == "Iron" && CompoundDatabase.Get("salt").NameTr == "Table Salt", "Element ve bileşik adları İngilizce");
-        Check(VillageDatabase.GetVillager("bal").NameTr == "Baker" && VillageDatabase.GetQuest("q_thirst").DialogueTr[0].StartsWith("Aqualf!"), "Köylü ve görev metinleri İngilizce");
+        Check(VillageDatabase.GetVillager("hollow").NameTr == "Innkeeper" && VillageDatabase.GetVillager("forge").BuildingTr == "Blacksmith Forge" && VillageDatabase.GetQuest("q_thirst").DialogueTr[0].StartsWith("Aqualf!"), "Görevli ve görev metinleri İngilizce");
         Check(FailDexDatabase.Get("midas").TitleTr == "Midas Cauldron" && PassiveDatabase.Get(PassiveDatabase.Owl).NameTr == "Wise Owl", "Fail-Dex ve pasifler İngilizce");
-        Check(AlchemyNames.Name(1) == "Pure Dew Essence" && BuildingDatabase.NameTr("tower") == "Aqualf's Tower", "Simya adları ve binalar İngilizce");
+        Check(AlchemyNames.Name(1) == "Pure Dew Essence" && BuildingDatabase.NameTr("tower") == "Alchemist Tower", "Simya adları ve binalar İngilizce");
         bool allEn = true;
         foreach (var v in VillageDatabase.Villagers) if (v.NameEn == null) allEn = false;
         foreach (var q in VillageDatabase.Quests) if (q.DialogueEn == null) allEn = false;

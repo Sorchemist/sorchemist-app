@@ -52,6 +52,20 @@ namespace Sorchemist.UI
 
         public static bool Has(string key) { return Get(key) != null; }
 
+        /// <summary>Bileşiğin iksir şişesi görseli (etkisine göre 6 şişe türünden biri).</summary>
+        public static string PotionKey(CompoundData c)
+        {
+            switch (c.Effect)
+            {
+                case PotionEffect.Hydrate: return "potion_drop";
+                case PotionEffect.Fizz: case PotionEffect.Cool: case PotionEffect.Fuel: return "potion_storm";
+                case PotionEffect.Light: case PotionEffect.Glass: case PotionEffect.Growth: return "potion_star";
+                case PotionEffect.Warmth: case PotionEffect.Build: case PotionEffect.Pigment: case PotionEffect.PestControl: return "potion_urn";
+                case PotionEffect.Fireworks: return "potion_orb";
+                default: return "potion_bottle";
+            }
+        }
+
         static readonly Dictionary<string, Sprite> SlicedCache = new Dictionary<string, Sprite>();
 
         /// <summary>9 dilimli (kenarları bozulmadan uzayan) sürüm. border: sol, alt, sağ, üst (piksel).</summary>

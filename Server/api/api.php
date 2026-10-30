@@ -226,9 +226,12 @@ function a_save_put(): void
     $buildings = [];
     foreach ($m['buildings'] as $bid => $blv) $buildings[] = ['id' => $bid, 'lv' => $blv];
     $houses = [];
-    foreach ((array)($state['Houses'] ?? []) as $h)
-        if (is_array($h) && (int)($h['State'] ?? 0) !== 0 && in_array((string)($h['VillagerId'] ?? ''), BUILDING_IDS, true))
-            $houses[] = ['id' => (string)$h['VillagerId'], 'st' => (int)$h['State']];
+    foreach ((array)($state['Houses'] ?? []) as $h) {
+        if (!is_array($h) || (int)($h['State'] ?? 0) === 0) continue;
+        $hid = (string)($h['VillagerId'] ?? '');
+        if ((int)($state['Version'] ?? 1) < 2) $hid = LEGACY_IDS[$hid] ?? $hid;
+        if (in_array($hid, BUILDING_IDS, true)) $houses[] = ['id' => $hid, 'st' => (int)$h['State']];
+    }
     $village = ['name' => $u['display_name'], 'level' => $lv, 'day' => $m['day'], 'tower' => $m['buildings']['tower'] ?? 1,
         'buildings' => $buildings, 'houses' => $houses, 'discovered' => count(array_unique($m['discovered'])), 'faildex' => $fail];
     upsert('villages', ['user_id' => $id, 'json' => json_encode($village, JSON_UNESCAPED_UNICODE), 'updated_at' => now()], ['user_id']);

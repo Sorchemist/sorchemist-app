@@ -109,6 +109,50 @@ namespace Sorchemist.Game
             I._buildingSrc.Play();
         }
 
+        /// <summary>Kayıtlı bir sesi bir kez çalar (ör. gök gürültüsü).</summary>
+        public static void PlayClip(string key, float volume = 1f)
+        {
+            if (I == null || !I.Enabled) return;
+            var c = I.Load(key);
+            if (c != null) I._src.PlayOneShot(c, volume);
+        }
+
+        // ---- Döngü sesleri: ambiyans (gündüz/gece/mevsim) ve binaların mekânsal sesleri ----
+        readonly System.Collections.Generic.Dictionary<string, AudioSource> _loops = new System.Collections.Generic.Dictionary<string, AudioSource>();
+
+        /// <summary>Anahtarlı bir döngüyü verilen ses ve sağ/sol dengesiyle çalar; ses yumuşakça hedefe yaklaşır. clip null ya da vol 0 ise kısılır.</summary>
+        public static void SetLoop(string key, string clip, float volume, float pan)
+        {
+            if (I == null) return;
+            AudioSource src;
+            if (!I._loops.TryGetValue(key, out src))
+            {
+                if (clip == null || volume <= 0.001f) return;
+                src = I.gameObject.AddComponent<AudioSource>();
+                src.loop = true; src.playOnAwake = false; src.volume = 0;
+                I._loops[key] = src;
+            }
+            float target = I.Enabled && clip != null ? volume : 0f;
+            if (clip != null && (src.clip == null || src.clip.name != clip))
+            {
+                var c = I.Load(clip);
+                if (c == null) return;
+                src.clip = c;
+                src.time = UnityEngine.Random.Range(0f, c.length * 0.9f);   // aynı türden döngüler aynı anda başlamasın
+                src.Play();
+            }
+            src.volume = Mathf.MoveTowards(src.volume, target, Time.unscaledDeltaTime * 0.6f);
+            src.panStereo = Mathf.Lerp(src.panStereo, pan, Time.unscaledDeltaTime * 4f);
+            if (src.volume <= 0.0001f && target <= 0f && src.isPlaying) src.Pause();
+            else if (target > 0f && !src.isPlaying && src.clip != null) src.UnPause();
+        }
+
+        public static void StopLoops()
+        {
+            if (I == null) return;
+            foreach (var s in I._loops.Values) if (s != null) { s.volume = 0; s.Pause(); }
+        }
+
         public static void Play(Sfx s, float volume = 1f, float pitchJitter = 0f)
         {
             if (I == null || !I.Enabled) return;

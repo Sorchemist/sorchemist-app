@@ -30,7 +30,8 @@ namespace Sorchemist.Core
     [Serializable]
     public class PlayerState
     {
-        public int Version = 1;
+        public int Version = CurrentVersion;
+        public const int CurrentVersion = 2;   // 2: köy -> 24 binalı simya kasabası
         public int Gold = 10;
         public int Xp;
         public int Level = 1;
@@ -135,10 +136,38 @@ namespace Sorchemist.Core
         public int PassiveSlots { get { return BuildingDatabase.PassiveSlots(TowerLevel); } }
         public int Builders { get { return BuildingDatabase.Builders(TowerLevel); } }
 
+        /// <summary>Binanın mahallesi büyülü sisten çıktı mı (oyuncu seviyesi yeterli mi)?</summary>
+        public bool IsDistrictOpen(string buildingId) { return Level >= BuildingDatabase.UnlockLevelOf(buildingId); }
+
         public bool IsUnlocked(string compoundId)
         {
             var u = BuildingDatabase.UnlockFor(compoundId);
-            return u == null || BuildingLevel(u.BuildingId) >= u.Level;
+            return u == null || (IsDistrictOpen(u.BuildingId) && BuildingLevel(u.BuildingId) >= u.Level);
+        }
+
+        /// <summary>Sürüm 1 (24 evli köy) kaydını 24 binalı kasabaya taşır: eski evin seviyesi yeni binaya geçer
+        /// (aynı binaya giden birden çok ev varsa en yüksek seviye), ev durumları da taşınır.</summary>
+        public bool MigrateLegacy()
+        {
+            if (Version >= CurrentVersion) return false;
+            var merged = new Dictionary<string, BuildingEntry>();
+            foreach (var b in Buildings)
+            {
+                string id = BuildingDatabase.MapLegacy(b.Id);
+                BuildingEntry cur;
+                if (!merged.TryGetValue(id, out cur) || b.Level > cur.Level || (b.Level == cur.Level && b.UpgradeEndsAt > cur.UpgradeEndsAt))
+                    merged[id] = new BuildingEntry { Id = id, Level = b.Level, UpgradeEndsAt = b.UpgradeEndsAt };
+            }
+            Buildings = merged.Values.ToList();
+            var houses = new Dictionary<string, HouseEntry>();
+            foreach (var h in Houses)
+            {
+                string id = BuildingDatabase.MapLegacy(h.VillagerId);
+                if (!houses.ContainsKey(id) || h.State != 0) houses[id] = new HouseEntry { VillagerId = id, State = h.State };
+            }
+            Houses = houses.Values.ToList();
+            Version = CurrentVersion;
+            return true;
         }
 
         public static int XpToNext(int level) { return 40 + level * 30; }

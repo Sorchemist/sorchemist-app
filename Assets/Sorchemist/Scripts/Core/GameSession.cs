@@ -20,6 +20,7 @@ namespace Sorchemist.Core
         public bool NewFail;        // Fail-Dex'e yeni giriş
         public int Knowledge;       // Kazanılan Bilgi Puanı
         public int LevelUps;
+        public bool DoubleDrop;     // İlkbahar bereketi: iksir çift çıktı
     }
 
     public class DeliveryReport
@@ -37,6 +38,7 @@ namespace Sorchemist.Core
         public Dictionary<string, int> Elements = new Dictionary<string, int>();
         public string RawId;
         public bool Rare;
+        public int Tier = 1;          // Sandık türü (1 tahta kasa ... 6 kozmik sandık)
         public int LevelUps;
     }
 
@@ -52,10 +54,20 @@ namespace Sorchemist.Core
         public const int KnowledgeNewCompound = 20;
         public const int KnowledgeNewFail = 5;
 
+        /// <summary>Şu anki zaman (unix sn). Testlerde değiştirilebilir.</summary>
+        public Func<long> Clock = () => DateTimeOffset.UtcNow.ToUnixTimeSeconds();
+        public Season CurrentSeason { get { return SeasonClock.At(Clock()); } }
+
+        /// <summary>Bina açık mahallede mi ve seviyesi kaç (kapalıysa 0).</summary>
+        public int OpenLevel(string id) { return State.IsDistrictOpen(id) ? State.BuildingLevel(id) : 0; }
+
         public GameSession(PlayerState state, int seed = 0)
         {
             State = state ?? PlayerState.NewGame();
             _rng = seed == 0 ? new Random() : new Random(seed);
+            State.MigrateLegacy();
+            // Eski kayıttaki görev artık yoksa (ör. kimliği değişti) yenisi seçilsin
+            if (!string.IsNullOrEmpty(State.ActiveQuestId) && VillageDatabase.GetQuest(State.ActiveQuestId) == null) State.ActiveQuestId = null;
             if (string.IsNullOrEmpty(State.ActiveQuestId)) PickNextQuest();
             foreach (var id in BuildingDatabase.AllIds) State.Building(id);   // eksik binaları oluştur
             // Eski kayıtlardaki elementleri "bilinen" say
@@ -86,7 +98,10 @@ namespace Sorchemist.Core
             get
             {
                 float g = 0;
-                foreach (var b in State.Buildings) g += BuildingDatabase.GoldPerMinute(b.Id, b.Level);
+                var season = CurrentSeason;
+                foreach (var b in State.Buildings)
+                    if (State.IsDistrictOpen(b.Id))
+                        g += BuildingDatabase.GoldPerMinute(b.Id, b.Level) * BuildingDatabase.SeasonGoldFactor(b.Id, season);
                 return g * (State.HasPassive(PassiveDatabase.GoldPurse) ? 1.25f : 1f);
             }
         }
@@ -97,7 +112,7 @@ namespace Sorchemist.Core
             get
             {
                 float k = 1f + State.KnownElements.Count * 0.1f + State.Discovered.Count * 0.5f + State.TowerLevel * 0.25f;
-                return k * (State.HasPassive(PassiveDatabase.Owl) ? 1.25f : 1f);
+                return k * (State.HasPassive(PassiveDatabase.Owl) ? 1.25f : 1f) * BuildingDatabase.HollowKnowledgeFactor(OpenLevel("hollow"));
             }
         }
 
@@ -128,18 +143,22 @@ namespace Sorchemist.Core
         public long UpgradeDuration(string id)
         {
             long s = BuildingDatabase.UpgradeSeconds(State.BuildingLevel(id));
-            return State.HasPassive(PassiveDatabase.Builder) ? (long)(s * 0.85) : s;
+            double f = (State.HasPassive(PassiveDatabase.Builder) ? 0.85 : 1.0) * BuildingDatabase.ChronosFactor(OpenLevel("chronos"));
+            return (long)(s * f);
         }
 
         /// <summary>Yükseltme başlatılamıyorsa nedenini, başlatılabiliyorsa null döndürür.</summary>
         public string CanUpgrade(string id)
         {
             var b = State.Building(id);
+            if (!State.IsDistrictOpen(id))
+                return Loc.T("Bu mahalle büyülü sisin altında: oyuncu Sv." + BuildingDatabase.UnlockLevelOf(id) + " olunca açılır",
+                              "This district is under the magical mist: it opens at player Lv." + BuildingDatabase.UnlockLevelOf(id));
             if (b.Level >= BuildingDatabase.MaxLevel) return Loc.T("En yüksek seviyede", "Already at max level");
             if (b.UpgradeEndsAt > 0) return Loc.T("Zaten yükseltiliyor", "Already upgrading");
             if (ActiveUpgrades >= State.Builders) return Loc.T("Bütün ustalar meşgul (" + State.Builders + " usta)", "All builders are busy (" + State.Builders + " builders)");
             if (id != BuildingDatabase.Tower && b.Level >= State.TowerLevel + 2)
-                return Loc.T("Önce Aqualf'in Kulesi'ni Sv." + (b.Level - 1) + " yap", "First raise Aqualf's Tower to Lv." + (b.Level - 1));
+                return Loc.T("Önce Simya Kulesi'ni Sv." + (b.Level - 1) + " yap", "First raise the Alchemist Tower to Lv." + (b.Level - 1));
             int cost = BuildingDatabase.UpgradeCost(id, b.Level);
             if (State.Gold < cost) return Loc.T("Yetersiz altın (" + cost + " gerekli)", "Not enough gold (" + cost + " needed)");
             return null;
@@ -218,7 +237,10 @@ namespace Sorchemist.Core
         public long BrewDuration(CompoundData c)
         {
             long s = 8L * c.AtomCount;   // atom başına 8 saniye
-            return State.HasPassive(PassiveDatabase.PatientPot) ? (long)(s * 0.7) : s;
+            double f = (State.HasPassive(PassiveDatabase.PatientPot) ? 0.7 : 1.0)
+                       * SeasonClock.BrewFactor(CurrentSeason, c.Effect)
+                       * BuildingDatabase.ChronosFactor(OpenLevel("chronos"));
+            return Math.Max(2L, (long)Math.Round(s * f));
         }
 
         /// <summary>Kazana konan atomları dener. Doğru ve açık tarif: demleme başlar.
@@ -284,6 +306,12 @@ namespace Sorchemist.Core
                 Result = new BrewResult { Success = true, Compound = c, Xp = c.Xp, MessageTr = c.NameTr + " (" + c.Formula + ")" + Loc.T(" hazır! ", " is ready! ") + c.FlavorTr }
             };
             State.AddPotion(c.Id, 1);
+            // İlkbahar bereketi: organik ve şifa iksirleri bazen çift çıkar
+            if (SeasonClock.DoubleDropEffect(CurrentSeason, c.Effect) && _rng.NextDouble() < 0.25)
+            {
+                State.AddPotion(c.Id, 1);
+                report.DoubleDrop = true;
+            }
             if (!State.Discovered.Contains(c.Id))
             {
                 State.Discovered.Add(c.Id);
@@ -308,6 +336,7 @@ namespace Sorchemist.Core
             State.AddPotion(potionId, -1);
 
             var o = QuestResolver.Deliver(q, potion, _rng);
+            o.Gold = (int)Math.Round(o.Gold * BuildingDatabase.AviaryGoldFactor(OpenLevel("aviary")));
             var rep = new DeliveryReport { Outcome = o };
             State.SetHouse(q.VillagerId, o.NewHouseState);
             State.Gold += o.Gold;
@@ -345,7 +374,8 @@ namespace Sorchemist.Core
             if (!MysteryReady(nowUnix)) return null;
             var r = new MysteryReward();
             bool luck = State.HasPassive(PassiveDatabase.Luck);
-            r.Gold = 20 + _rng.Next(41);
+            r.Tier = BuildingDatabase.ChestTier(State.TowerLevel);
+            r.Gold = (int)Math.Round((20 + _rng.Next(41)) * (1 + 0.25 * (r.Tier - 1)) * BuildingDatabase.VaultFactor(OpenLevel("vault")));
             r.Xp = 15;
             int picks = 1 + (_rng.NextDouble() < (luck ? 0.6 : 0.35) ? 1 : 0);
             for (int i = 0; i < picks; i++)

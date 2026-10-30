@@ -15,7 +15,12 @@ namespace Sorchemist.Core
         class Problem
         {
             public PotionEffect Effect; public string[] Who; public string Tr, En;
-            public Problem(PotionEffect e, string who, string tr, string en) { Effect = e; Who = who.Split(','); Tr = tr; En = en; }
+            public Problem(PotionEffect e, string who, string tr, string en)
+            {
+                Effect = e; Tr = tr; En = en;
+                // Dertler eski köy meslekleriyle etiketlendi: yeni kasaba görevlilerine taşınır
+                Who = who.Split(',').Select(BuildingDatabase.MapLegacy).Distinct().ToArray();
+            }
         }
 
         static Problem P(PotionEffect e, string who, string tr, string en) { return new Problem(e, who, tr, en); }
@@ -2422,7 +2427,7 @@ namespace Sorchemist.Core
             }
         }
 
-        // İksiri yapabilmek için gereken en düşük bina seviyesi (kolay etkiler önce gelsin)
+        // İksiri yapabilmek için gereken mahalle ve bina seviyesi (kolay etkiler önce gelsin)
         static int Difficulty(PotionEffect e)
         {
             int best = 99;
@@ -2430,9 +2435,130 @@ namespace Sorchemist.Core
             {
                 if (c.Effect != e) continue;
                 var u = BuildingDatabase.UnlockFor(c.Id);
-                best = System.Math.Min(best, u != null ? u.Level : 1);
+                best = System.Math.Min(best, u != null ? BuildingDatabase.UnlockRank(u) : 1);
             }
             return best;
+        }
+
+        // =====================================================================
+        // Yeni kasaba görevlilerinin (eski köyde karşılığı olmayan) kendi dertleri: k001...
+        // =====================================================================
+        static readonly Problem[] KeeperProblems =
+        {
+            // Kadim Rün Kütüphanesi
+            P(PotionEffect.Preserve, "library", "Kadim parşömenler küfleniyor; sayfalar nemden birbirine yapışmış.", "The ancient scrolls are going mouldy; the pages are stuck together with damp."),
+            P(PotionEffect.Light, "library", "Rün salonunun kandilleri söndü; karanlıkta harfleri okuyamıyorum.", "The lamps in the rune hall went out; I can't read the letters in the dark."),
+            P(PotionEffect.Pigment, "library", "Mürekkebim soldu; yeni rünleri yazmak için kırmızı bir boya lazım.", "My ink has faded; I need a red pigment to write the new runes."),
+            P(PotionEffect.Cleanse, "library", "Biri kitabın üstünde yağlı çörek unutmuş! Sayfa leke içinde.", "Someone left a greasy bun on a book! The page is covered in stains."),
+            P(PotionEffect.PestControl, "library", "Kitap kurtları Periyodik Tablo'nun ilk bölümünü kemiriyor.", "Bookworms are chewing through the first chapter of the Periodic Table."),
+            P(PotionEffect.Cool, "library", "Rün taşları aşırı ısındı; raflar tütmeye başladı.", "The rune stones are overheating and the shelves have started to smoke."),
+            P(PotionEffect.Disinfect, "library", "Eski bir sandıktan çıkan kitaplar tuhaf kokuyor; mikrop dolu olabilir.", "The books from an old chest smell strange; they may be full of germs."),
+            P(PotionEffect.Build, "library", "Kütüphanenin taş duvarında çatlak var; raflar yamuldu.", "There's a crack in the library's stone wall and the shelves are crooked."),
+            // Göksel Gözlemevi
+            P(PotionEffect.Glass, "observatory", "Teleskobun merceği çatladı; yıldızlar ikiye bölünmüş görünüyor.", "The telescope lens has cracked; the stars look split in two."),
+            P(PotionEffect.Cleanse, "observatory", "Merceğe kuş pisliği yapışmış! Satürn'ün halkaları leke gibi.", "Bird droppings on the lens! Saturn's rings look like a smudge."),
+            P(PotionEffect.Light, "observatory", "Yıldız haritasını gece işaretlemek için sönük ama sürekli bir ışık gerek.", "I need a dim but steady light to mark the star chart at night."),
+            P(PotionEffect.Cool, "observatory", "Pirinç usturlap güneşte ısınıp genleşti; ayarı kaydı.", "The brass astrolabe expanded in the sun and lost its calibration."),
+            P(PotionEffect.Warmth, "observatory", "Gece gözlemlerinde parmaklarım donuyor; teleskobu çeviremiyorum.", "My fingers freeze during night observations; I can't turn the telescope."),
+            P(PotionEffect.Preserve, "observatory", "Yüz yıllık yıldız kayıtları nemden çürüyor.", "A century of star records is rotting in the damp."),
+            P(PotionEffect.Fireworks, "observatory", "Kayan yıldız gecesi için kasabaya işaret fişeği atmak istiyorum.", "I want to send up a signal flare for the town on shooting-star night."),
+            P(PotionEffect.PestControl, "observatory", "Dürbün borusunun içine örümcekler ağ örmüş.", "Spiders have spun webs inside the telescope tube."),
+            // Kadim Boyut Geçidi
+            P(PotionEffect.Dissolve, "portal", "Geçidin rün taşlarına pas gibi bir kabuk yapıştı; ışıkları sönüyor.", "A rusty crust has formed on the gate's rune stones and their light is fading."),
+            P(PotionEffect.Cool, "portal", "Girdaptan çıkan cevher kıpkırmızı sıcak; elle tutamıyoruz.", "The ore from the vortex is red-hot; we can't hold it."),
+            P(PotionEffect.Build, "portal", "Taş kemerin bir ayağı oynadı; geçit çökebilir.", "One leg of the stone arch is loose; the gate could collapse."),
+            P(PotionEffect.Light, "portal", "Girdabın içinde az kalsın kayboluyordum; çıkışı gösterecek bir ışık lazım.", "I nearly got lost in the vortex; I need a light to mark the way out."),
+            P(PotionEffect.Disinfect, "portal", "Öbür boyuttan tuhaf sporlar geldi; geçidin çevresi mikrop kaynıyor.", "Strange spores came from the other side; the gate is crawling with germs."),
+            P(PotionEffect.Preserve, "portal", "Boyut ötesinden gelen meyveler bir gecede çürüyor.", "Fruit from beyond the rift rots overnight."),
+            P(PotionEffect.Glass, "portal", "Radyoaktif cevherleri koymak için kalın camdan kavanozlar gerek.", "I need thick glass jars to hold the radioactive ores."),
+            P(PotionEffect.Soothe, "portal", "Girdaba fazla bakan çırağın midesi bulandı.", "The apprentice who stared too long into the vortex is feeling sick."),
+            // Dev Bakır Damıtma Tesisi
+            P(PotionEffect.Fuel, "distillery", "Bakır imbiğin altındaki ateş sönmek üzere; temiz yanan bir yakıt lazım.", "The fire under the copper still is dying; I need a clean-burning fuel."),
+            P(PotionEffect.Cool, "distillery", "Spiral soğutma borusu ısındı; buhar yoğunlaşmıyor.", "The spiral cooling coil is hot and the vapour won't condense."),
+            P(PotionEffect.Dissolve, "distillery", "Borulara kireç kaya gibi yapışmış; akış durdu.", "Scale has caked the pipes like rock and the flow has stopped."),
+            P(PotionEffect.Pigment, "distillery", "Damıtılan sıvılara renk vermek istiyorum ki şişeler karışmasın.", "I want to colour the distillates so the bottles don't get mixed up."),
+            P(PotionEffect.Disinfect, "distillery", "Toplama kavanozları temiz değil; her parti bozuluyor.", "The collecting jars aren't clean and every batch spoils."),
+            P(PotionEffect.Cleanse, "distillery", "Bakır kazanların içi yağlı is tuttu.", "The inside of the copper vats is coated in greasy soot."),
+            P(PotionEffect.Hydrate, "distillery", "Kazanın suyu bitti; boş kaynatırsam bakır yanar!", "The vat has run dry; if I boil it empty the copper will burn!"),
+            P(PotionEffect.Glass, "distillery", "Cam toplama balonu çatladı; yenisi lazım.", "The glass receiving flask has cracked; I need a new one."),
+            // Kronos Kum Saati Kulesi
+            P(PotionEffect.Cleanse, "chronos", "Saat dişlilerine yağ ve toz dolmuş; akrep yerinden oynamıyor.", "Oil and dust have clogged the gears; the hour hand won't move."),
+            P(PotionEffect.Dissolve, "chronos", "Kum saatinin boğazında kum taşlaşmış; zaman akmıyor!", "The sand has hardened in the hourglass neck; time won't flow!"),
+            P(PotionEffect.Glass, "chronos", "Dev kum saatinin camında kılcal bir çatlak var.", "There's a hairline crack in the giant hourglass."),
+            P(PotionEffect.Preserve, "chronos", "Zaman kayıtlarını tutan parşömenler nemden siliniyor.", "The parchments with the time records are fading in the damp."),
+            P(PotionEffect.Pigment, "chronos", "Kadranın rakamları soldu; saati okuyamıyorum.", "The numbers on the dial have faded; I can't read the time."),
+            P(PotionEffect.Cool, "chronos", "Hızlanan dişliler ısındı; kule tütüyor.", "The racing gears have overheated and the tower is smoking."),
+            P(PotionEffect.Light, "chronos", "Gece yarısı kadranı görmek için parlayan bir ışık gerek.", "I need a glowing light to see the dial at midnight."),
+            P(PotionEffect.Build, "chronos", "Saat kulesinin temeli çatladı; kule yamuldu.", "The clock tower's foundation has cracked and the tower is leaning."),
+            // Biyolüminesan Mantar Kubbesi
+            P(PotionEffect.Growth, "sporedome", "Mantarlar küçük kaldı; ışıkları da sönük.", "The mushrooms stayed small and their glow is dim."),
+            P(PotionEffect.PestControl, "sporedome", "Mantarları sümüklüböcekler yiyor; ışıklı izler bırakıyorlar.", "Slugs are eating the mushrooms and leaving glowing trails."),
+            P(PotionEffect.Hydrate, "sporedome", "Kubbenin içi kurudu; sporlar toz gibi uçuşuyor.", "It's dried out inside the dome and the spores are flying like dust."),
+            P(PotionEffect.Fizz, "sporedome", "Kubbedeki bitkiler havayı tüketti; taze karbondioksit gerek.", "The plants in the dome used up the air; they need fresh carbon dioxide."),
+            P(PotionEffect.Disinfect, "sporedome", "Yabancı bir küf kubbeyi sardı; parlak mantarlarımı boğuyor.", "A foreign mould has taken over the dome and is choking my glowing mushrooms."),
+            P(PotionEffect.Light, "sporedome", "Yeni fideler karanlıkta büyümüyor; ilk ışığı ben vermeliyim.", "The new seedlings won't grow in the dark; I have to give them their first light."),
+            P(PotionEffect.Soothe, "sporedome", "Spor yutan çırak öksürükten kıvranıyor.", "The apprentice who swallowed spores is coughing his heart out."),
+            P(PotionEffect.Warmth, "sporedome", "Kristal kubbe gece çok soğudu; mantarlar uykuya daldı.", "The crystal dome got very cold at night and the mushrooms went dormant."),
+            // Rünlü Hazine Mahzeni
+            P(PotionEffect.Dissolve, "vault", "Mahzenin kilidi paslandı; anahtar dönmüyor.", "The vault lock has rusted; the key won't turn."),
+            P(PotionEffect.Preserve, "vault", "Sandıklardaki eski haritalar ufalanıyor.", "The old maps in the chests are crumbling."),
+            P(PotionEffect.Cool, "vault", "Radyoaktif sandık ısınıyor; yanına yaklaşılmıyor.", "The radioactive chest is heating up; no one can get near it."),
+            P(PotionEffect.Build, "vault", "Mahzenin tavanından taş dökülüyor.", "Stones are falling from the vault ceiling."),
+            P(PotionEffect.Light, "vault", "Mahzende meşale yakmak yasak; patlayıcılar var. Ateşsiz ışık lazım.", "Torches are forbidden in the vault because of the explosives. I need light without fire."),
+            P(PotionEffect.Cleanse, "vault", "Felsefe Taşı parçaları isten kararmış.", "The Philosopher's Stone shards are blackened with soot."),
+            P(PotionEffect.PestControl, "vault", "Mahzene fareler girmiş; parşömenleri kemiriyorlar.", "Rats have got into the vault and are gnawing the scrolls."),
+            P(PotionEffect.Disinfect, "vault", "Eski sandıklardan çıkan tozdan herkes hasta oluyor.", "Everyone gets sick from the dust in the old chests."),
+            // Yıldıztaşı Krateri
+            P(PotionEffect.Cool, "crater", "Göktaşı hâlâ sıcak; kazı yapamıyoruz.", "The meteorite is still hot; we can't dig."),
+            P(PotionEffect.Dissolve, "crater", "Göktaşını kaplayan kabuğu çözmem gerek; altında kristaller var.", "I need to dissolve the crust on the meteorite; there are crystals underneath."),
+            P(PotionEffect.Build, "crater", "Krater kenarı çöküyor; iskeleyi sağlamlaştırmalıyım.", "The crater rim is collapsing; I must shore up the scaffolding."),
+            P(PotionEffect.Light, "crater", "Krater dibi karanlık; göktaşı parçalarını göremiyorum.", "The crater floor is dark; I can't see the meteorite fragments."),
+            P(PotionEffect.Glass, "crater", "Göktaşı tozunu inceleyecek bir mercek lazım.", "I need a lens to study the meteorite dust."),
+            P(PotionEffect.Preserve, "crater", "Topladığım uzay tozu örnekleri nemden bozuluyor.", "My space-dust samples are spoiling in the damp."),
+            P(PotionEffect.Fireworks, "crater", "Kâşifler kraterde kayboldu; yerimi göstermek için işaret fişeği atmalıyım.", "Some explorers are lost in the crater; I must fire a flare to show them where I am."),
+            P(PotionEffect.Hydrate, "crater", "Kazı tozundan nefes alamıyoruz; toprağı ıslatmak lazım.", "We can't breathe for the digging dust; the ground needs wetting."),
+            // Haberci Kuş ve Posta Kulesi
+            P(PotionEffect.Hydrate, "aviary", "Haberci kuşlar uzun yoldan döndü; susuzluktan bitkinler.", "The messenger birds are back from a long flight, exhausted with thirst."),
+            P(PotionEffect.PestControl, "aviary", "Kuş yuvalarını bit sarmış; tüyler dökülüyor.", "Lice have infested the nests and the feathers are falling out."),
+            P(PotionEffect.Preserve, "aviary", "Mektup kâğıtları yağmurda ıslanıp çürüyor.", "The letter paper gets wet in the rain and rots."),
+            P(PotionEffect.Pigment, "aviary", "Mühür boyam bitti; mektupları kırmızı mühürle kapatmam lazım.", "I've run out of seal colour; the letters need a red seal."),
+            P(PotionEffect.Warmth, "aviary", "Kışın kuşlar yuvada titriyor.", "In winter the birds shiver in their nests."),
+            P(PotionEffect.Soothe, "aviary", "Bir kuş yanlışlıkla ekşi yem yedi; karnı ağrıyor.", "A bird ate sour feed by mistake and has a tummy ache."),
+            P(PotionEffect.Growth, "aviary", "Kulenin çevresindeki kuş yemi otları büyümüyor.", "The birdseed grass around the tower won't grow."),
+            P(PotionEffect.Light, "aviary", "Gece uçan kuşlar kuleyi bulamıyor; tepeye bir işaret ışığı lazım.", "Birds flying at night can't find the tower; it needs a beacon on top."),
+        };
+
+        public static int KeeperProblemCount { get { return KeeperProblems.Length; } }
+
+        /// <summary>Yeni görevlilerin dertlerinden görev üretir (k001...). Seviyeleri mahallelerinin açıldığı seviyeden başlar.</summary>
+        public static void GenerateKeeperQuests(List<QuestData> quests)
+        {
+            var perKeeper = new Dictionary<string, int>();
+            for (int n = 0; n < KeeperProblems.Length; n++)
+            {
+                var p = KeeperProblems[n];
+                string who = p.Who[0];
+                int idx; perKeeper.TryGetValue(who, out idx); perKeeper[who] = idx + 1;
+                int level = System.Math.Min(40, BuildingDatabase.UnlockLevelOf(who) + idx * 2);
+                var hints = Hints[p.Effect]; var thanks = Thanks[p.Effect];
+                var h = hints[(n * 3 + 1) % hints.Length];
+                var s = thanks[(n * 5 + 2) % thanks.Length];
+                var t = Twists[(n * 7 + 3) % Twists.Length];
+                quests.Add(new QuestData
+                {
+                    Id = "k" + (n + 1).ToString("000"),
+                    VillagerId = who,
+                    MinLevel = level,
+                    Needed = p.Effect,
+                    RewardGold = 15 + 4 * level + (n % 5) * 2,
+                    RewardXp = 12 + 3 * level,
+                    RewardRaw = new[] { n % 4 == 3 ? "crystal" : RewardRaw[p.Effect] },
+                    DialogueTr = new[] { p.Tr, t[0], h[0] },
+                    DialogueEn = new[] { p.En, t[1], h[1] },
+                    SuccessTr = s[0],
+                    SuccessEn = s[1],
+                });
+            }
         }
     }
 }

@@ -1,5 +1,5 @@
 // Pasif özellikler ekranı (eski "Yetenek" sekmesi).
-// Bilgi Puanı ile pasif açılır, Aqualf'in Kulesi'nin seviyesine göre açılan yuvalara takılır.
+// Bilgi Puanı ile pasif açılır, Simya Kulesi'nin seviyesine göre açılan yuvalara takılır.
 // Yalnızca yuvadaki pasifler etki eder.
 using Sorchemist.Core;
 using Sorchemist.Game;

@@ -284,7 +284,7 @@ namespace Sorchemist.UI
             {
                 if (CauldronTotal >= State.CauldronCapacity)
                 {
-                    G.Toast(Loc.T("Kazan dolu! (", "The cauldron is full! (") + State.CauldronCapacity + Loc.T(" atom)\nAqualf'in Kulesi'ni yükselterek büyüt.", " atoms)\nUpgrade Aqualf's Tower to make it bigger."));
+                    G.Toast(Loc.T("Kazan dolu! (", "The cauldron is full! (") + State.CauldronCapacity + Loc.T(" atom)\nSimya Kulesi'ni yükselterek büyüt.", " atoms)\nUpgrade the Alchemist Tower to make it bigger."));
                     return;
                 }
                 _cauldron[e.Symbol] = InCauldron(e.Symbol) + 1;
@@ -572,8 +572,8 @@ namespace Sorchemist.UI
                 var c = r.Compound;
                 ResultPopup.Show(c.NameTr + " (" + c.Formula + ")", UIKit.Hex(c.ColorHex),
                     Loc.T("Etki: <b>", "Effect: <b>") + CompoundDatabase.EffectNameTr(c.Effect) + "</b>\n\n" + c.FlavorTr, null,
-                    (rep.NewDiscovery ? Loc.T("YENİ KEŞİF!  •  ", "NEW DISCOVERY!  •  ") : "") + "+" + r.Xp + " XP" + (rep.Knowledge > 0 ? "  •  +" + rep.Knowledge + Loc.T(" Bilgi", " Knowledge") : ""),
-                    Loc.T("Aqualf laboratuvarda ", "Aqualf discovered ") + c.NameTr + " (" + c.Formula + Loc.T(") keşfetti!", ") in the lab!"), () => Done(rep), "fx_success");
+                    (rep.NewDiscovery ? Loc.T("YENİ KEŞİF!  •  ", "NEW DISCOVERY!  •  ") : "") + (rep.DoubleDrop ? Loc.T("İLKBAHAR BEREKETİ: x2!  •  ", "SPRING BOUNTY: x2!  •  ") : "") + "+" + r.Xp + " XP" + (rep.Knowledge > 0 ? "  •  +" + rep.Knowledge + Loc.T(" Bilgi", " Knowledge") : ""),
+                    Loc.T("Aqualf laboratuvarda ", "Aqualf discovered ") + c.NameTr + " (" + c.Formula + Loc.T(") keşfetti!", ") in the lab!"), () => Done(rep), Art.Has(Art.PotionKey(c)) ? Art.PotionKey(c) : "fx_success");
             }
             else if (r.Fail != null)
             {
@@ -651,7 +651,7 @@ namespace Sorchemist.UI
                 var buy = UIKit.Btn(row.transform, "Buy", Loc.T("Al (", "Buy (") + GameSession.RawPrice + Loc.T("a)", "g)"), Theme.PanelLight, () =>
                 {
                     if (Session.BuyRaw(r.Id)) { AudioFX.Play(Sfx.Collect); RefreshExtract(); }
-                    else G.Toast(Loc.T("Yeterli altının yok. Köylülere yardım et!", "Not enough gold. Help the villagers!"));
+                    else G.Toast(Loc.T("Yeterli altının yok. Kasaba halkına yardım et!", "Not enough gold. Help the townsfolk!"));
                 }, 30);
                 UIKit.Place((RectTransform)buy.transform, new Vector2(1, 0.5f), new Vector2(-24, -55), new Vector2(260, 80), new Vector2(1, 0.5f));
             }
@@ -686,7 +686,7 @@ namespace Sorchemist.UI
             UIKit.Clear(_recipeList);
             int found = CompoundDatabase.All.Count(c => State.Discovered.Contains(c.Id));
             var head = UIKit.Txt(_recipeList, "Head", Loc.T("Keşfedilen bileşikler: ", "Compounds discovered: ") + found + " / " + CompoundDatabase.All.Count +
-                Loc.T("\n<size=26>Yeni deneyler köydeki evler yükseldikçe açılır. İpuçlarını köylülerin sözlerinde ara!</size>", "\n<size=26>New experiments unlock as the village houses level up. Look for hints in what the villagers say!</size>"), 34, Theme.Accent);
+                Loc.T("\n<size=26>Yeni deneyler kasabanın binaları yükseldikçe ve büyülü sis kalktıkça açılır. İpuçlarını görevlilerin sözlerinde ara!</size>", "\n<size=26>New experiments unlock as the town's buildings level up and the magical mist lifts. Look for hints in what the keepers say!</size>"), 34, Theme.Accent);
             UIKit.LE(head, 110);
             foreach (var c in CompoundDatabase.All)
             {

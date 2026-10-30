@@ -14,10 +14,14 @@ namespace Sorchemist.Core
         public string Id;
         public string NameTr { get { return Loc.Pick(_nameTr, NameEn); } set { _nameTr = value; } }
         string _nameTr; public string NameEn;
+        /// <summary>Unvan (ör. "Örs Ustası").</summary>
         public string RoleTr { get { return Loc.Pick(_roleTr, RoleEn); } set { _roleTr = value; } }
         string _roleTr; public string RoleEn;
-        public int GridX, GridY;       // İzometrik haritadaki ev konumu
-        public string ColorHex;        // Yer tutucu görsel rengi
+        /// <summary>Görevli olduğu binanın adı (ör. "Demirci Ocağı").</summary>
+        public string BuildingTr { get { return Loc.Pick(_buildingTr, BuildingEn); } set { _buildingTr = value; } }
+        string _buildingTr; public string BuildingEn;
+        public int Group = 1;          // Mahalle (1-4): büyülü sisin altından hangi oyuncu seviyesinde açılır
+        public string ColorHex;        // Karakterin ana rengi
         public string[] AmbientTr { get { return Loc.Pick(_ambientTr, AmbientEn); } set { _ambientTr = value; } }     // Görevi olmayan köylülerin sohbet cümleleri
         string[] _ambientTr; public string[] AmbientEn;
     }
@@ -73,10 +77,19 @@ namespace Sorchemist.Core
             { PotionEffect.Fireworks, "fireworks_mishap" },
         };
 
-        private static void V(string id, string name, string role, int x, int y, string color, params string[] ambient)
+        private static void V(string id, int group, string name, string title, string building, string color, params string[] ambient)
         {
-            _villagers.Add(new VillagerData { Id = id, NameTr = name, RoleTr = role, GridX = x, GridY = y, ColorHex = color, AmbientTr = ambient });
+            _villagers.Add(new VillagerData { Id = id, Group = group, NameTr = name, RoleTr = title, BuildingTr = building, ColorHex = color, AmbientTr = ambient });
         }
+
+        /// <summary>Simya Kulesi'nin görevlisi: oyuncuya yol gösteren Başsimyacı (görev vermez, kuleyi yönetir).</summary>
+        public static readonly VillagerData TowerKeeper = new VillagerData
+        {
+            Id = "tower", Group = 1, NameTr = "Başsimyacı", NameEn = "Arch-Alchemist", RoleTr = "Bilge Gözcü", RoleEn = "Sage Watcher",
+            BuildingTr = "Simya Kulesi", BuildingEn = "Alchemist Tower", ColorHex = "#2E4BA8",
+            AmbientTr = new[] { "Her element bir sır, her sır bir kapı. Kapıları sabırla aç, Aqualf.", "Kulenin dürbünüyle sisin ardını görüyorum: yeni mahalleler seni bekliyor." },
+            AmbientEn = new[] { "Every element is a secret, every secret a door. Open them with patience, Aqualf.", "Through the tower's telescope I see beyond the mist: new districts await you." },
+        };
 
         private static QuestData Q(string id, string villager, int lvl, PotionEffect need, int gold, int xp,
             string success, string[] raws, params string[] lines)
@@ -103,32 +116,57 @@ namespace Sorchemist.Core
             _villagers = new List<VillagerData>();
             _quests = new List<QuestData>();
 
-            // Köylüler: adları evlerinin tabelasındaki meslekle aynıdır (Fırıncı, Demirci, Aşçı...)
-            V("fistik", "Çiftçi", "Çiftçi", 1, 4, "#A9744F", "Toprak cömerttir ama ekşiyse hiçbir şey yetişmez.", "Bu yıl kabaklar kocaman olacak, hissediyorum!");
-            V("bal", "Fırıncı", "Fırıncı", 2, 2, "#F5B041", "Karbonat hamuru kabartır, maya ise sabrı.", "Fırının ısısı iyi ekmeğin yarısıdır.");
-            V("pirtik", "Çoban", "Çoban", 1, 2, "#F1948A", "Koyunlarım beni dinler, keçiler dinlemez.", "Yün kırkarken hep hapşırırım!");
-            V("tokmak", "Demirci", "Demirci", 1, 1, "#5D6D7E", "Demir paslanır, çelik dayanır. Fark karbondadır!", "Örs başında ritim her şeydir: tak, tak, tak!");
-            V("ebe", "Şifacı", "Şifacı", 2, 4, "#AF7AC5", "Her yaraya bir iksir, her derde bir çay.", "Yaraları temiz tutarsan yarısı kendi kendine iyileşir.");
-            V("fener", "Av Koruyucusu", "Av Koruyucusu", 4, 4, "#F4D03F", "Gece ormanda gözler parlar. Çoğu baykuş. Çoğu...", "İz sürmek sabır ister, tıpkı simya gibi.");
-            V("zeytin", "Hancı", "Hancı", 4, 2, "#7DCEA0", "Handa bugün meyve gazozu var. Gazı da senden!", "Yolcular uzak diyarlardan haberler getirir.");
-            V("kopuk", "Çamaşırcı", "Çamaşırcı", 4, 3, "#85C1E9", "Sabun yağı söker, ben de lekeleri!", "Rüzgârlı gün, çamaşırın bayramıdır.");
-            V("filiz", "Ormancı", "Ormancı", 3, 1, "#58D68D", "Her ağaç bir zamanlar bir tohumdu.", "Ormanda yangın çıkmasın diye gözüm hep dumanda.");
-            V("ruzgar", "Değirmenci", "Değirmenci", 2, 1, "#D7BDE2", "Rüzgâr eserse un, esmezse dert.", "Değirmen taşı döndükçe köy doyar.");
-            // Köyün diğer sakinleri
-            V("oduncu", "Oduncu", "Oduncu", 1, 0, "#8D6E63", "Bu meşeler yüz yaşında. Külleri bile bereketlidir, potasyum doludur!", "Baltam keskin, odunum kuru. Kış hazır!");
-            V("marangoz", "Marangoz", "Marangoz", 2, 0, "#A1887F", "Kazanın için yeni bir raf mı lazım? Ölç, biç, sonra kes!", "Talaş kokusu gibisi yok.");
-            V("tasusta", "Taş Ustası", "Taş Ustası", 4, 0, "#90A4AE", "Kireç taşını kızdırırsan sönmemiş kireç olur, bilir misin?", "Her taşın içinde bir heykel saklıdır.");
-            V("derici", "Derici", "Derici", 4, 1, "#795548", "Deriyi yumuşatmak için tuz ve sabır gerekir.", "Kokuya alışırsın. Galiba.");
-            V("komurcu", "Kömürcü", "Kömürcü", 0, 2, "#455A64", "Kömür saf karbondur! Ben de biraz karbon gibi görünüyorum.", "Ocakların hepsi benim kömürümle yanar.");
-            V("kunduraci", "Kunduracı", "Kunduracı", 5, 2, "#6D4C41", "Ayakkabın delinmiş Aqualf. Damla gibi akıyorsun!", "Her adım bir hikâyedir.");
-            V("asci", "Aşçı", "Aşçı", 1, 3, "#EF6C00", "Mutfak da bir laboratuvar! Tuz, karbonat, sirke... hepsi kimya.", "Çorbanın sırrı: azıcık tuz.");
-            V("sucu", "Sucu", "Sucu", 2, 3, "#29B6F6", "Kuyu suyu tertemiz. H2O, başka bir şey yok!", "Kovalarım hep dolu, gönlüm de.");
-            V("terzi", "Terzi", "Terzi", 5, 3, "#AB47BC", "Kumaşları göztaşıyla mavi, pasla kırmızı boyarım.", "Ölçü al, ölçü al, sonra bir daha ölçü al.");
-            V("dokumaci", "Dokumacı", "Dokumacı", 0, 4, "#EC407A", "Tezgâhımda renk renk ipler... boyaları senden alıyorum!", "Bir ilmek daha, bir ilmek daha.");
-            V("balikci", "Balıkçı", "Balıkçı", 5, 4, "#0277BD", "Nehir bugün cömert. Deniz suyu da tuz doludur, haberin olsun.", "Sabır balıkçının en iyi yemidir.");
-            V("comlekci", "Çömlekçi", "Çömlekçi", 1, 5, "#BF7B4C", "Kil ve kum, ateşte birleşince sağlam bir çömlek olur.", "Elime çamur bulaşmadan gün geçmez.");
-            V("berber", "Berber", "Berber", 2, 5, "#7E57C2", "Saçların hâlâ isli mi? Gel bir düzelteyim!", "Köyün bütün dedikoduları bu koltukta konuşulur.");
-            V("arici", "Arıcı", "Arıcı", 4, 5, "#FBC02D", "Arılarım çiçekleri sever; sen de iksirleri.", "Bal, doğanın kendi simyasıdır.");
+            // Kasaba görevlileri: her binanın kendi Aqualf'ı var (Pastane–Aşçı mantığı: bina = meslek).
+            // ---- 1. Mahalle: Temel Üretim ve Kaynak Ustaları ----
+            V("forge", 1, "Demirci", "Örs Ustası", "Demirci Ocağı", "#E67E22",
+                "Demir paslanır, çelik dayanır. Fark karbondadır!", "Örs başında ritim her şeydir: tak, tak, tak!");
+            V("glasshouse", 1, "Bahçıvan", "Sera Filizi", "Cam Sera", "#58D68D",
+                "Her bitki biraz su, biraz ışık ve bolca sabır ister.", "Seradaki mantarlar geceleri parlıyor. Fosfor mu acaba?");
+            V("watermill", 1, "Değirmenci", "Çark Kaptanı", "Büyülü Su Değirmeni", "#48C9B0",
+                "Nehir akar, çark döner, su arınır. H2O, saf ve temiz!", "Çarkın her dönüşünde biraz büyü suya karışır.");
+            V("mine", 1, "Madenci", "Kazma Damarı", "Cevher Madeni", "#3949AB",
+                "Kayanın içinde tuz, kükürt, kuvars... Toprak bir hazine sandığı!", "Mumum sönerse geri dönerim. Kural bu.");
+            V("well", 1, "Kuyucu", "Öz Süzücü", "Öz Kuyusu", "#8E44AD",
+                "Kuyunun dibinden mana damlaları yükselir. Pembe olanlar en tatlısı.", "Bir kova su, bir kepçe öz. Hepsi ölçülü.");
+            // ---- 2. Mahalle: Zanaat, Araştırma ve Ticaret ----
+            V("workshop", 2, "Kimyager", "Buhar Şişesi", "İksir ve Buhar Atölyesi", "#6C3FC4",
+                "Asit suya dökülür, su asite değil! Bunu unutan kaşını kaybeder.", "Tüplerim renk renk. Her biri ayrı bir deney.");
+            V("healer", 2, "Otacı", "Şifa Yaprağı", "Şifacı ve Otacı Kulübesi", "#6B8E23",
+                "Her yaraya bir merhem, her derde bir ot.", "Yaraları temiz tutarsan yarısı kendi kendine iyileşir.");
+            V("crystal", 2, "Kristalci", "Mercek Gözü", "Kristal Kesim ve Mercek Evi", "#5DADE2",
+                "Kum ateşte erir, cam olur; cam ustalıkla yontulur, mercek olur.", "Işık kristalden geçince yedi renge ayrılır. Hiç bıkmam!");
+            V("library", 2, "Kütüphaneci", "Rün Bekçisi", "Kadim Rün Kütüphanesi", "#283593",
+                "Periyodik Tablo bir kitaptır; her satırı bir aile.", "Rünler parlıyorsa biri yasak bir sayfayı açmış demektir.");
+            V("market", 2, "Tüccar", "Altın Terazi", "Simya Takas Pazarı", "#F39C12",
+                "Deri, kumaş, ayakkabı, kristal... Ne ararsan pazarda!", "Terazim dürüsttür; ben de öyle. Çoğu zaman.");
+            V("windmill", 2, "Rüzgârcı", "Hava Okuyucu", "Rüzgâr ve Hava Değirmeni", "#4FC3F7",
+                "Rüzgâr esince un öğütülür, esmeyince hava okunur.", "Havadaki azotu, oksijeni, argonu kanatlarımda hissederim.");
+            // ---- 3. Mahalle: Keşif, Ulaşım ve Arıtma ----
+            V("observatory", 3, "Gökbilimci", "Yıldız Kâşifi", "Göksel Gözlemevi", "#1A237E",
+                "Helyum ilk Güneş'te bulundu, sonra Dünya'da. Gökyüzü bir laboratuvar!", "Dürbünüm yarın fırtına olacağını söylüyor.");
+            V("portal", 3, "Portal Bekçisi", "Boyut Muhafızı", "Kadim Boyut Geçidi", "#9B59B6",
+                "Geçitten ağır ve radyoaktif cevherler gelir. Dikkatli ol.", "Girdabın içinde yıldızlar dönüyor. Bakma, başın döner.");
+            V("dock", 3, "Hava Kaptanı", "Bulut Pilotu", "Zeplin İskelesi", "#81D4FA",
+                "Zeplinim helyumla uçar; hidrojenle değil, ateşle şakası olmaz!", "Uzak krallıklar iksirlerini bekliyor.");
+            V("hollow", 3, "Hancı", "Kök Ev Aşçısı", "Kök Ev", "#7CB342",
+                "Sıcak çay, taze ekmek, rahat yatak. Kök Ev'e hoş geldin!", "Mutfak da bir laboratuvar: tuz, karbonat, sirke... hepsi kimya.");
+            V("stable", 3, "Seyis", "Çiftlik Bakıcısı", "Büyülü Yaratık Ahırı", "#827717",
+                "Binekler parlayan otu sever; gübresi de amonyak kokar!", "Hayvanlarım beni dinler, keçiler dinlemez.");
+            V("distillery", 3, "İmbikçi", "Bakır Usta", "Dev Bakır Damıtma Tesisi", "#B87333",
+                "Kaynat, buharlaştır, soğut, damla damla topla. Damıtma budur.", "Bakır borularım sıcak; dokunma, iz kalır.");
+            // ---- 4. Mahalle: Usta Seviye ve Efsanevi Görevliler ----
+            V("smeltery", 4, "Dökümcü", "Lav Efendisi", "Magma Dökümhanesi", "#D84315",
+                "Tungsten 3422 derecede erir. Benim lavım daha sıcak!", "Kömür, odun, lav... Ocağım hiç sönmez.");
+            V("chronos", 4, "Zaman Bekçisi", "Kum Saati Bilgesi", "Kronos Kum Saati Kulesi", "#D4AC0D",
+                "Zaman da bir elementtir; sadece tabloda yeri yok.", "Kumlar akarken tepkimeler hızlanır. Sabırsızlara iyi gelir.");
+            V("sporedome", 4, "Mantarbilimci", "Spor Işığı", "Biyolüminesan Mantar Kubbesi", "#E040FB",
+                "Mantarlarım karanlıkta parlar: biyolüminesans!", "Sporlar her yere uçar. Hapşırırsan özür dilerim.");
+            V("vault", 4, "Hazine Muhafızı", "Rün Kilidi", "Rünlü Hazine Mahzeni", "#78909C",
+                "Mahzende Felsefe Taşı parçaları var. Anahtar bende.", "Tehlikeli elementler kilit altında durur. Kural bu.");
+            V("crater", 4, "Göktaşı Kâşifi", "Yıldıztaşı Avcısı", "Yıldıztaşı Krateri", "#7E57C2",
+                "Bu göktaşı uzaydan geldi; içinde dünyada olmayan izler var.", "Çekicim, büyüteçim ve sabrım. Krater beni bekler.");
+            V("aviary", 4, "Postacı", "Rüzgâr Kanadı", "Haberci Kuş ve Posta Kulesi", "#4DD0E1",
+                "Kuşlarım her sabah yeni dertler getirir. Ve tüy.", "Mektubun var Aqualf! Ah, yanlış adres...");
 
             Q("q_thirst", "filiz", 1, PotionEffect.Hydrate, 20, 15, "Fidelerim kana kana içti! Sana en güzel çiçeğimi ayırdım.",
                 new[] { "dewcap" },
@@ -343,8 +381,16 @@ namespace Sorchemist.Core
                 "Tıraş sabunum bitti, müşteriler kuru kuru tıraş oluyor. Ah ah!",
                 "Yağı köpüklü sabuna dönüştüren güçlü bazı getirirsen hemen sabun pişiririm.");
 
+            // Elle yazılmış görevler eski köy kimlikleriyle yazıldı: yeni binalara taşı
+            foreach (var q in _quests) q.VillagerId = BuildingDatabase.MapLegacy(q.VillagerId);
+
             // ---- Görev bankası: toplam 2000 göreve tamamla (Türkçe + İngilizce) ----
             QuestBank.GenerateInto(_quests);
+            // ---- Yeni görevlilerin kendi dertleri ----
+            QuestBank.GenerateKeeperQuests(_quests);
+
+            // Bir görev, köylünün mahallesi sisten çıkmadan gelemez
+            foreach (var q in _quests) q.MinLevel = Math.Max(q.MinLevel, BuildingDatabase.UnlockLevelOf(q.VillagerId));
         }
     }
 
@@ -415,6 +461,7 @@ namespace Sorchemist.Core
         public static QuestData NextQuest(int level, ICollection<string> completed, Random rng, Func<QuestData, bool> canMake = null)
         {
             var open = VillageDatabase.Quests.Where(q => q.MinLevel <= level && !completed.Contains(q.Id)).ToList();
+            // Hikâye görevleri: önce yapılabilir olanlar, seviyesi en düşük olan
             var story = (canMake != null ? open.Where(canMake).OrderBy(q => q.MinLevel).FirstOrDefault() : null)
                         ?? open.OrderBy(q => q.MinLevel).FirstOrDefault();
             if (story != null) return story;

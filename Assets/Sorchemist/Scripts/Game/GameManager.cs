@@ -198,19 +198,37 @@ namespace Sorchemist.Game
             if (ups <= 0) return;
             AudioFX.Play(Sfx.LevelUp);
             FX.I.CrystalRain(Overlay, Theme.Gold, 40);
-            Toast(Loc.T("Seviye ", "Level ") + State.Level + Loc.T("! Aqualf'in ünü köyde yayılıyor.", "! Aqualf's fame is spreading through the village."));
+            Toast(Loc.T("Seviye ", "Level ") + State.Level + Loc.T("! Aqualf'in ünü kasabada yayılıyor.", "! Aqualf's fame is spreading through the town."));
+            // Büyülü sis kalkan mahalleler
+            int prev = State.Level - ups;
+            for (int g = 2; g <= 4; g++)
+            {
+                int need = BuildingDatabase.GroupUnlockLevel(g);
+                if (prev < need && State.Level >= need)
+                {
+                    string[] names = { "", "", Loc.T("Zanaat ve Araştırma Mahallesi", "Craft & Research District"),
+                                       Loc.T("Keşif ve Arıtma Mahallesi", "Exploration & Refining District"), Loc.T("Efsanevi Volkanik Mahalle", "Legendary Volcanic District") };
+                    AudioFX.Play(Sfx.Chime);
+                    FX.I.Flash(Overlay, new Color(0.75f, 0.55f, 1f, 0.5f), 0.8f);
+                    ResultPopup.Show(Loc.T("Büyülü Sis Kalktı!", "The Magic Mist Lifts!"), Theme.Magic,
+                        names[g] + Loc.T(" artık açık! Yeni binalar, yeni görevliler ve yeni deneyler seni bekliyor.", " is now open! New buildings, new keepers and new experiments await you."),
+                        null, null, Loc.T("Sorchemist'te yeni bir mahallenin sisini kaldırdım!", "I lifted the mist from a new district in Sorchemist!"), RefreshCurrent,
+                        g == 2 ? "fog_cloud" : g == 3 ? "fog_runes" : "fog_cosmic");
+                }
+            }
         }
 
         void Intro()
         {
             DialoguePanel.Show(Overlay, "Aqualf", Loc.T("Fındıkdere'nin Simyacısı", "Alchemist of Hazelbrook"), "#3E7CB1", "portrait_aqualf", new[]
             {
-                Loc.T("Hoş geldin! Ben Aqualf, Fındıkdere köyünün tek simyacısıyım.", "Welcome! I'm Aqualf, the only alchemist in Hazelbrook village."),
-                Loc.T("Köylüler dertlerini kapıma getirir, ben de onlara iksir hazırlarım.", "The villagers bring their troubles to my door, and I make potions for them."),
+                Loc.T("Hoş geldin! Ben Aqualf, Fındıkdere kasabasının simyacısıyım.", "Welcome! I'm Aqualf, the alchemist of Hazelbrook town."),
+                Loc.T("Kasabanın 23 görevlisi dertlerini kapıma getirir, ben de onlara iksir hazırlarım.", "The town's 23 keepers bring their troubles to my door, and I make potions for them."),
                 Loc.T("Ama sihrin sırrı kimyadır: ham maddeleri laboratuvarda elementlere ayır, doğru atomları kazana at ve iksirin demlenmesini bekle.", "But the secret of magic is chemistry: break raw materials down into elements in the lab, put the right atoms in the cauldron and wait for the potion to brew."),
-                Loc.T("Köydeki her evin bir seviyesi var. Evleri yükselttikçe yeni deneyler açılır, köy büyür. Ama dikkat: üst seviyeler günler sürer!", "Every house in the village has a level. Upgrade houses to unlock new experiments and grow the village. But careful: the higher levels take days!"),
+                Loc.T("Kasabanın her binasının bir seviyesi var. Binaları yükselttikçe yeni deneyler açılır. Uzak mahalleler büyülü sisin altında: sen seviye atladıkça sis kalkar.", "Every building in town has a level. Upgrade them to unlock new experiments. The far districts lie under a magical mist that lifts as you level up."),
+                Loc.T("Mevsimler de önemli: ilkbahar şifa iksirlerini, sonbahar ateşi, kış asitleri, fırtına da elektrolizi hızlandırır. Sağ üstteki madalyona bak!", "Seasons matter too: spring speeds up healing potions, autumn fire, winter acids and storms electrolysis. Check the medallion at the top right!"),
                 Loc.T("Oyunda kaldıkça altın ve Bilgi Puanı biriktirirsin. Bilgiyle kulemdeki yuvalara pasif özellikler takabilirsin.", "While you play you collect gold and Knowledge Points. Use Knowledge to put passives into the slots of my tower."),
-                Loc.T("Yanlış karışım mı? Eh... Fail-Dex'e bir sayfa daha! Hadi, haritada gezin ve ünlem işaretli evi bul!", "Wrong mix? Well... one more page for the Fail-Dex! Come on, explore the map and find the house with the exclamation mark!")
+                Loc.T("Yanlış karışım mı? Eh... Fail-Dex'e bir sayfa daha! Hadi, haritada gezin ve ünlem işaretli binayı bul!", "Wrong mix? Well... one more page for the Fail-Dex! Come on, explore the map and find the building with the exclamation mark!")
             }, null);
         }
 

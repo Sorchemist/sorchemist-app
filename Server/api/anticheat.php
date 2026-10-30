@@ -17,8 +17,13 @@ const FAIL_IDS = ['mystery_goo', 'near_miss', 'lukewarm_sludge', 'burnt', 'lumpy
     'noble_snub', 'hydrogen_pop', 'green_cloud', 'mercury_hat', 'glow_beard', 'midas', 'blinding_flash', 'rotten_egg', 'overflow',
     'giant_pumpkins', 'frog_villager', 'floating_villager', 'frozen_house', 'foam_flood', 'glowing_house', 'pink_village', 'fireworks_mishap'];
 const PASSIVE_IDS = ['p_gold', 'p_owl', 'p_builder', 'p_brew', 'p_column', 'p_luck', 'p_sand', 'p_mendeleev', 'p_copper', 'p_purple'];
-const BUILDING_IDS = ['tower', 'fistik', 'bal', 'pirtik', 'tokmak', 'ebe', 'fener', 'zeytin', 'kopuk', 'filiz', 'ruzgar', 'oduncu', 'marangoz',
-    'tasusta', 'derici', 'komurcu', 'kunduraci', 'asci', 'sucu', 'terzi', 'dokumaci', 'balikci', 'comlekci', 'berber', 'arici'];
+const BUILDING_IDS = ['tower', 'forge', 'glasshouse', 'watermill', 'mine', 'well', 'workshop', 'healer', 'crystal', 'library', 'market',
+    'windmill', 'observatory', 'portal', 'dock', 'hollow', 'stable', 'distillery', 'smeltery', 'chronos', 'sporedome', 'vault', 'crater', 'aviary'];
+// Kayıt sürüm 1 (24 evli köy) -> sürüm 2 (24 binalı kasaba). Oyundaki BuildingDatabase.LegacyIds ile aynı.
+const LEGACY_IDS = ['tokmak' => 'forge', 'fistik' => 'glasshouse', 'filiz' => 'glasshouse', 'arici' => 'glasshouse', 'sucu' => 'watermill',
+    'tasusta' => 'mine', 'kopuk' => 'well', 'berber' => 'workshop', 'ebe' => 'healer', 'comlekci' => 'crystal', 'dokumaci' => 'market',
+    'derici' => 'market', 'kunduraci' => 'market', 'terzi' => 'market', 'ruzgar' => 'windmill', 'balikci' => 'dock', 'marangoz' => 'dock',
+    'zeytin' => 'hollow', 'bal' => 'hollow', 'asci' => 'hollow', 'pirtik' => 'stable', 'fener' => 'stable', 'komurcu' => 'smeltery', 'oduncu' => 'smeltery'];
 // Seviye L'den L+1'e yükseltme süresi (sn), oyundaki BuildingDatabase ile aynı
 const UPGRADE_SECONDS = [0, 60, 300, 900, 3600, 10800, 43200, 86400, 259200, 518400, 1036800, 2073600];
 
@@ -27,7 +32,7 @@ const MAX_GOLD = 50000000;
 const MAX_LEVEL = 300;
 const MAX_POTION_STACK = 9999;
 const MAX_ELEMENT_STACK = 99999;
-const MAX_QUESTS = 2000;
+const MAX_QUESTS = 2100;
 
 // ----- Zamana bağlı cömert üst sınırlar -----
 const GOLD_PER_MIN = 10;         // pasif gelir en fazla 24 ev × 12 × 0,01 × 1,25 = 3,6/dk
@@ -77,8 +82,11 @@ function save_metrics(array $s): array
     $up = [];
     foreach (($s['Buildings'] ?? []) as $x) {
         if (!is_array($x) || !isset($x['Id'])) continue;
-        $b[(string)$x['Id']] = (int)($x['Level'] ?? 1);
-        if ((int)($x['UpgradeEndsAt'] ?? 0) > 0) $up[(string)$x['Id']] = true;
+        $bid = (string)$x['Id'];
+        if ((int)($s['Version'] ?? 1) < 2) $bid = LEGACY_IDS[$bid] ?? $bid;   // eski kayıt: yeni binaya taşı (en yüksek seviye)
+        $lv = (int)($x['Level'] ?? 1);
+        if (!isset($b[$bid]) || $lv > $b[$bid]) $b[$bid] = $lv;
+        if ((int)($x['UpgradeEndsAt'] ?? 0) > 0) $up[$bid] = true;
     }
     $level = (int)($s['Level'] ?? 1);
     return [
@@ -118,7 +126,7 @@ function check_absolute(array $m): array
     foreach ($m['elements'] as $e => $n) if ($n < 0 || $n > MAX_ELEMENT_STACK || strlen($e) > 3) $bad[] = 'element_range';
     $q = $m['quests'];
     if (count($q) > MAX_QUESTS || count(array_unique($q)) !== count($q)) $bad[] = 'quest_list';
-    foreach ($q as $id) if (!preg_match('/^(q_[a-z_]{2,20}|g\d{4})$/', $id)) { $bad[] = 'quest_id'; break; }
+    foreach ($q as $id) if (!preg_match('/^(q_[a-z_]{2,20}|g\d{4}|k\d{3})$/', $id)) { $bad[] = 'quest_id'; break; }
     if (count(array_unique($m['known'])) > 118) $bad[] = 'known_elements';
     foreach ($m['discovered'] as $c) if (!in_array($c, POTION_IDS, true)) { $bad[] = 'discovered_id'; break; }
     foreach ($m['faildex'] as $f) if (!in_array($f, FAIL_IDS, true)) { $bad[] = 'faildex_id'; break; }
@@ -150,7 +158,7 @@ function check_delta(array $prev, array $new, int $elapsed, array $ledger): arra
     if ($mysteryGained > $elapsed / (5 * 3600) + 1) $bad[] = 'too_many_mystery_boxes';
 
     // Altın
-    $goldAllow = $min * GOLD_PER_MIN + $questsGained * 250 + $mysteryGained * 100 + max(0, $ledger['gold'] ?? 0) + 500;
+    $goldAllow = $min * GOLD_PER_MIN + $questsGained * 250 + $mysteryGained * 300 + max(0, $ledger['gold'] ?? 0) + 500;
     if ($new['gold'] - $prev['gold'] > $goldAllow) $bad[] = 'gold_jump';
 
     // XP

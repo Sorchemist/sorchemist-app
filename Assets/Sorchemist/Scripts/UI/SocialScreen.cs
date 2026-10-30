@@ -250,12 +250,12 @@ namespace Sorchemist.UI
                     g.constraint = GridLayoutGroup.Constraint.FixedColumnCount; g.constraintCount = 6;
 
                     var states = new Dictionary<string, int>();
-                    foreach (var h in v["houses"].Items) states[h["id"].Str] = h["st"].Int;
+                    foreach (var h in v["houses"].Items) states[BuildingDatabase.MapLegacy(h["id"].Str)] = h["st"].Int;
                     foreach (var b in v["buildings"].Items.OrderByDescending(x => x["lv"].Int))
                     {
-                        string id = b["id"].Str;
+                        string id = BuildingDatabase.MapLegacy(b["id"].Str);   // eski sürümle kaydedilmiş köyler
                         var cell = UIKit.Panel(grid, "B_" + id, Theme.PanelLight).rectTransform;
-                        var art = Art.First(id == BuildingDatabase.Tower ? "lab_tower" : "house_" + id, "house_default");
+                        var art = Art.First("bld_" + id, id == BuildingDatabase.Tower ? "lab_tower" : "house_default");
                         if (art != null)
                         {
                             var img = Art.Image(cell, "Art", art);

@@ -1,5 +1,6 @@
-// İzometrik "hobbit köyü" haritası. Köy 13x13 karo: ortada Aqualf'in Kulesi, evler aralarında boşluk
-// kalacak şekilde dağınık; oyuncu haritada gezinerek evleri bulur. Her evin 1-12 arası seviyesi vardır.
+// İzometrik simya kasabası haritası (13x13 karo). Ortada Simya Kulesi; çevresinde 4 mahalle:
+// 1. mahalle kulenin hemen yanında, 2. mahalle doğuda, 3. mahalle batıda, 4. mahalle (efsanevi) güneyde.
+// Açılmamış mahallelerin binaları büyülü sis altında bekler. Her binanın kendi görevlisi (Aqualf) kapısında durur.
 using System;
 using System.Collections.Generic;
 using System.Linq;
@@ -27,6 +28,9 @@ namespace Sorchemist.UI
         Text _mysteryLabel;
         int _mysterySpot = -1;
         readonly HashSet<string> _artHouses = new HashSet<string>();
+        readonly List<Image> _waterTiles = new List<Image>();
+        readonly List<Vector2Int> _propCells = new List<Vector2Int>();
+        TownAtmosphere _atmo;
 
         // Açık bina paneli (geri sayımı canlı güncellemek için)
         RectTransform _panel;
@@ -51,16 +55,33 @@ namespace Sorchemist.UI
                 for (int y = 0; y < GridSize; y += 2)
                     for (int x = 0; x < GridSize; x += 2)
                         if (x != LabPos.x && y != LabPos.y) slots.Add(new Vector2Int(x, y));
-                // Kuleye uzaklık; eşitlikte sabit karıştırma (her yöne dağılsın)
-                slots = slots.OrderBy(v => (v - LabPos).sqrMagnitude * 100 + ((v.x * 31 + v.y * 17) % 97)).ToList();
-                // İlk görevleri olan köylüler kuleye yakın otursun
-                var order = new List<string>();
-                foreach (var q in VillageDatabase.Quests.OrderBy(q => q.MinLevel))
-                    if (!order.Contains(q.VillagerId)) order.Add(q.VillagerId);
-                foreach (var v in VillageDatabase.Villagers) if (!order.Contains(v.Id)) order.Add(v.Id);
-                _housePos = new Dictionary<string, Vector2Int>();
-                for (int i = 0; i < order.Count && i < slots.Count; i++) _housePos[order[i]] = slots[i];
+                Func<Vector2Int, int> dist = v => (v - LabPos).sqrMagnitude;
+                slots = slots.OrderBy(v => dist(v) * 100 + ((v.x * 31 + v.y * 17) % 97)).ToList();
                 _houseSlots = new HashSet<Vector2Int>(slots);
+                _housePos = new Dictionary<string, Vector2Int>();
+                var rem = new List<Vector2Int>(slots);
+                // Mahalle yönleri: 2 doğu (ekranın sağı), 3 batı (sol), 4 güney (aşağı, volkanik krater bölgesi)
+                Func<int, Func<Vector2Int, int>> score = g =>
+                    g == 1 ? (Func<Vector2Int, int>)(v => dist(v)) :
+                    g == 2 ? (Func<Vector2Int, int>)(v => dist(v) - 14 * (v.x - v.y)) :
+                    g == 3 ? (Func<Vector2Int, int>)(v => dist(v) - 14 * (v.y - v.x)) :
+                             (Func<Vector2Int, int>)(v => dist(v) - 14 * (v.x + v.y - 2 * LabPos.x));
+                for (int g = 1; g <= 4; g++)
+                {
+                    // İlk görevleri olan görevliler kuleye yakın otursun
+                    var members = VillageDatabase.Villagers.Where(v => v.Group == g)
+                        .OrderBy(v => VillageDatabase.Quests.Where(q => q.VillagerId == v.Id).Select(q => q.MinLevel).DefaultIfEmpty(99).Min())
+                        .ThenBy(v => v.Id).ToList();
+                    var mine = rem.OrderBy(score(g)).Take(members.Count).OrderBy(v => dist(v)).ToList();
+                    foreach (var v in mine) rem.Remove(v);
+                    // Su Değirmeni nehre en yakın yuvaya
+                    if (g == 1)
+                    {
+                        var mill = members.FirstOrDefault(v => v.Id == "watermill");
+                        if (mill != null) { members.Remove(mill); var east = mine.OrderByDescending(v => v.x - v.y).First(); mine.Remove(east); _housePos[mill.Id] = east; }
+                    }
+                    for (int i = 0; i < members.Count && i < mine.Count; i++) _housePos[members[i].Id] = mine[i];
+                }
                 return _housePos;
             }
         }
@@ -154,6 +175,7 @@ namespace Sorchemist.UI
                     t = Art.Image(tiles, "T", art);
                     float h = (TileW + 6) * art.rect.height / art.rect.width;
                     UIKit.Place(t.rectTransform, new Vector2(0.5f, 0.5f), IsoToLocal(c.x, c.y), new Vector2(TileW + 6, h));
+                    if (c.x == RiverX) _waterTiles.Add(t);
                 }
                 else
                 {
@@ -192,6 +214,10 @@ namespace Sorchemist.UI
                     var key = FillerDecor[h % 2];
                     items.Add(new KeyValuePair<int, Action>(p.x + p.y, () => BuildDecor(key, p, 0.85f)));
                 }
+                else if (h % 4 == 1 || h % 4 == 2)
+                {
+                    _propCells.Add(p);   // mevsim objeleri (çiçek, yaprak yığını, buz, su birikintisi...)
+                }
                 else if (h % 4 == 0)
                 {
                     // Evlerin arasındaki boşluklarda küçük süsler (evleri örtmesin)
@@ -206,6 +232,16 @@ namespace Sorchemist.UI
             items.Sort((a, b) => a.Key.CompareTo(b.Key));
             foreach (var it in items) it.Value();
             BuildMystery();
+
+            // Atmosfer: gece/gündüz, mevsimler, hava parçacıkları, ambiyans ve bina sesleri
+            _atmo = Root.gameObject.AddComponent<TownAtmosphere>();
+            _atmo.Root = Root; _atmo.Map = content; _atmo.Objects = _objects;
+            _atmo.CellPos = (x, y) => IsoToLocal(x, y);
+            _atmo.PropCells.AddRange(_propCells);
+            _atmo.WaterTiles.AddRange(_waterTiles);
+            foreach (var kv in _houseViews) _atmo.Buildings[kv.Key] = kv.Value;
+            if (_towerView != null) _atmo.Buildings[BuildingDatabase.Tower] = _towerView;
+            _atmo.Build();
 
             // Uzaklaştırılmış görünüm; köy ekrandan büyük, gezinerek keşfedilir
             content.localScale = Vector3.one * Zoom;
@@ -238,13 +274,14 @@ namespace Sorchemist.UI
 
         void BuildHouse(VillagerData v, Vector2Int pos)
         {
-            var rt = ObjectRoot("House_" + v.Id, pos.x, pos.y, new Vector2(340, 330));
-            var houseArt = Art.First("house_" + v.Id, "house_default");
+            var rt = ObjectRoot("House_" + v.Id, pos.x, pos.y, new Vector2(400, 380));
+            var houseArt = Art.First("bld_" + v.Id, "house_default");
             Image wall, roof;
             if (houseArt != null)
             {
                 wall = Art.Image(rt, "Wall", houseArt);
-                UIKit.Place(wall.rectTransform, new Vector2(0.5f, 0), new Vector2(0, 0), new Vector2(340, 300), new Vector2(0.5f, 0));
+                float w = 420, h = w * houseArt.rect.height / houseArt.rect.width;
+                UIKit.Place(wall.rectTransform, new Vector2(0.5f, 0), new Vector2(0, -20), new Vector2(w, h), new Vector2(0.5f, 0));
                 roof = wall;
                 _artHouses.Add(v.Id);
             }
@@ -258,7 +295,49 @@ namespace Sorchemist.UI
                 UIKit.Place(door.rectTransform, new Vector2(0.5f, 0), new Vector2(0, 30), new Vector2(56, 84), new Vector2(0.5f, 0));
             }
 
-            AddNameplate(rt, v.NameTr, Color.white, -30);
+            // Binanın görevlisi kapının önünde durur (dokununca sohbet ya da görev)
+            var keeperArt = Art.Get("keeper_" + v.Id);
+            if (keeperArt != null)
+            {
+                var k = Art.Image(rt, "Keeper", keeperArt);
+                float kh = 190, kw = kh * keeperArt.rect.width / keeperArt.rect.height;
+                UIKit.Place(k.rectTransform, new Vector2(0.5f, 0), new Vector2(165, -40), new Vector2(kw, kh), new Vector2(0.5f, 0));
+                var keeper = v;
+                k.gameObject.AddComponent<Button>().onClick.AddListener(() =>
+                {
+                    if (!State.IsDistrictOpen(keeper.Id)) { TapHouse(keeper); return; }
+                    AudioFX.Play(Sfx.Click, 0.5f);
+                    var aq = Session.ActiveQuest;
+                    if (aq != null && aq.VillagerId == keeper.Id) OpenQuest(); else Talk(keeper);
+                });
+            }
+
+            AddNameplate(rt, v.BuildingTr, Color.white, -40);
+
+            // Büyülü sis: mahalle açılana kadar binanın üstünde bekler
+            var fog = UIKit.Rect("Fog", rt);
+            UIKit.Stretch(fog);
+            string fogKey = v.Group == 2 ? "fog_cloud" : v.Group == 3 ? "fog_runes" : "fog_cosmic";
+            var fogArt = Art.Get(fogKey);
+            if (fogArt != null)
+            {
+                var fi = Art.Image(fog, "Mist", fogArt);
+                float fw = 560, fh = fw * fogArt.rect.height / fogArt.rect.width;
+                UIKit.Place(fi.rectTransform, new Vector2(0.5f, 0), new Vector2(0, 20), new Vector2(fw, fh), new Vector2(0.5f, 0));
+                fi.color = new Color(1, 1, 1, 0.93f);
+                fi.gameObject.AddComponent<Button>().onClick.AddListener(() => TapHouse(v));
+            }
+            var lockArt = Art.Get("fog_lock");
+            if (lockArt != null)
+            {
+                var li = Art.Image(fog, "Lock", lockArt);
+                UIKit.Place(li.rectTransform, new Vector2(0.5f, 0), new Vector2(0, 170), new Vector2(120, 120 * lockArt.rect.height / lockArt.rect.width));
+                li.raycastTarget = false;
+                li.gameObject.AddComponent<Bouncer>().Amplitude = 6;
+            }
+            var lt = UIKit.Txt(fog, "Need", Loc.T("Sv.", "Lv.") + BuildingDatabase.GroupUnlockLevel(v.Group), 30, Theme.Gold, TextAnchor.MiddleCenter, FontStyle.Bold);
+            UIKit.Place(lt.rectTransform, new Vector2(0.5f, 0), new Vector2(0, 95), new Vector2(200, 44));
+            lt.gameObject.AddComponent<Outline>().effectColor = Color.black;
 
             var state = UIKit.Rect("State", rt);           // Yaşayan harita süslemeleri buraya
             UIKit.Stretch(state);
@@ -306,6 +385,11 @@ namespace Sorchemist.UI
             var lvl = rt.Find("Plate/Level");
             if (lvl == null) return;
             var b = State.Building(id);
+            if (id != BuildingDatabase.Tower && !State.IsDistrictOpen(id))
+            {
+                lvl.GetComponent<Text>().text = "<color=#C9B8FF>" + Loc.T("Büyülü sis • Sv.", "Magic mist • Lv.") + BuildingDatabase.UnlockLevelOf(id) + Loc.T("'te açılır", "") + "</color>";
+                return;
+            }
             string t = Loc.T("Sv.", "Lv.") + b.Level + (b.Level >= BuildingDatabase.MaxLevel ? Loc.T(" (MAKS)", " (MAX)") : "");
             if (b.UpgradeEndsAt > 0)
                 t += "  <color=#7CF2C8>" + BuildingDatabase.FormatDuration(Session.UpgradeSecondsLeft(id, now)) + "</color>";
@@ -328,7 +412,7 @@ namespace Sorchemist.UI
         void BuildLab()
         {
             var rt = ObjectRoot("Lab", LabPos.x, LabPos.y, new Vector2(560, 500));
-            var towerArt = Art.First("lab_tower", "cauldron");
+            var towerArt = Art.First("bld_tower", "lab_tower", "cauldron");
             Image tower;
             if (towerArt != null)
             {
@@ -345,7 +429,7 @@ namespace Sorchemist.UI
                 UIKit.Place(win.rectTransform, new Vector2(0.5f, 0), new Vector2(0, 200), new Vector2(64, 64), new Vector2(0.5f, 0));
                 win.gameObject.AddComponent<Bouncer>().Glow = true;
             }
-            AddNameplate(rt, Loc.T("Aqualf'in Kulesi", "Aqualf's Tower"), Theme.Accent, -10);
+            AddNameplate(rt, BuildingDatabase.NameTr(BuildingDatabase.Tower), Theme.Accent, -10);
             tower.gameObject.AddComponent<Button>().onClick.AddListener(() => { AudioFX.PlayBuilding(BuildingDatabase.Tower); OpenBuilding(BuildingDatabase.Tower); });
             _towerView = rt;
         }
@@ -365,7 +449,7 @@ namespace Sorchemist.UI
             UIKit.Place(glow.rectTransform, new Vector2(0.5f, 0), new Vector2(0, 100), new Vector2(260, 260));
             glow.raycastTarget = false;
             glow.gameObject.AddComponent<Bouncer>().Glow = true;
-            var art = Art.First("mystery_box_2", "mystery_box_1");
+            var art = Art.First("chest_" + BuildingDatabase.ChestTier(State.TowerLevel), "mystery_box_2", "mystery_box_1");
             _mysteryImg = art != null ? Art.Image(_mystery, "Box", art) : UIKit.Img(_mystery, "Box", Theme.Gold, UIKit.Diamond);
             UIKit.Place(_mysteryImg.rectTransform, new Vector2(0.5f, 0), new Vector2(0, 30), new Vector2(170, 170), new Vector2(0.5f, 0));
             _mysteryImg.gameObject.AddComponent<Bouncer>().Amplitude = 14;
@@ -388,8 +472,10 @@ namespace Sorchemist.UI
                 _mystery.SetAsLastSibling();
             }
             _mystery.Find("Glow").gameObject.SetActive(ready);
+            var chest = Art.Get("chest_" + BuildingDatabase.ChestTier(State.TowerLevel));
+            if (chest != null && _mysteryImg.sprite != chest) { _mysteryImg.sprite = chest; ((Image)_mysteryImg).preserveAspect = true; }
             _mysteryImg.color = ready ? Color.white : new Color(0.55f, 0.55f, 0.6f, 0.55f);
-            if (ready) _mysteryLabel.text = Loc.T("Gizemli Kutu!", "Mystery Box!");
+            if (ready) _mysteryLabel.text = Loc.T("Gizemli Sandık!", "Mystery Chest!");
             else
             {
                 long left = Session.MysterySecondsLeft(now);
@@ -419,13 +505,20 @@ namespace Sorchemist.UI
                 Loc.T("Kutunun içinden şunlar çıktı:\n\n<b>", "Out of the box came:\n\n<b>") + els + "</b>\n+1 " + raw.NameTr + "\n+" + r.Gold + Loc.T(" altın", " gold"),
                 Loc.T("Sıradaki kutu ", "The next box arrives in ") + Session.MysteryInterval / 3600 + Loc.T(" saat sonra köye gelecek. Nadir elementler için 'Şans Tılsımı' pasifi işe yarar.", " hours. The 'Lucky Charm' passive helps with rare elements."),
                 "+" + r.Xp + " XP" + (r.Knowledge > 0 ? "  •  +" + r.Knowledge + Loc.T(" Bilgi", " Knowledge") : ""), Loc.T("Sorchemist'te gizemli kutudan ", "I got ") + els + Loc.T(" çıktı!", " from a Mystery Box in Sorchemist!"),
-                () => { G.HandleLevelUps(r.LevelUps); Refresh(); }, Art.Has("mystery_box_2") ? "mystery_box_2" : null);
+                () => { G.HandleLevelUps(r.LevelUps); Refresh(); }, Art.Has("chest_" + r.Tier) ? "chest_" + r.Tier : (Art.Has("mystery_box_2") ? "mystery_box_2" : null));
             RefreshMystery();
         }
 
         // ---------- Etkileşimler ----------
         void TapHouse(VillagerData v)
         {
+            if (!State.IsDistrictOpen(v.Id))
+            {
+                AudioFX.Play(Sfx.Pop, 0.6f);
+                G.Toast(Loc.T("Büyülü sis bu mahalleyi örtüyor. ", "A magical mist covers this district. ") + v.BuildingTr +
+                        Loc.T(" oyuncu Sv." + BuildingDatabase.UnlockLevelOf(v.Id) + " olunca açılır.", " opens at player Lv." + BuildingDatabase.UnlockLevelOf(v.Id) + "."));
+                return;
+            }
             AudioFX.PlayBuilding(v.Id);
             OpenBuilding(v.Id);
         }
@@ -471,7 +564,7 @@ namespace Sorchemist.UI
             _panel = UIKit.Modal(G.Overlay, BuildingDatabase.NameTr(id), out body, 900, 1500);
             _panelId = id;
 
-            string portrait = tower ? "portrait_aqualf" : "portrait_" + id;
+            string portrait = tower ? (Art.Has("portrait_tower") ? "portrait_tower" : "portrait_aqualf") : "portrait_" + id;
             bool hasPortrait = Art.Has(portrait);
             if (hasPortrait)
             {
@@ -484,16 +577,22 @@ namespace Sorchemist.UI
             int lv = b.Level;
             if (tower)
             {
-                info = Loc.T("<b>Seviye ", "<b>Level ") + lv + " / " + BuildingDatabase.MaxLevel + "</b>\n" +
+                var tk = VillageDatabase.TowerKeeper;
+                info = "<b>" + tk.NameTr + "</b>  <color=#A99FC9>\"" + tk.RoleTr + "\"</color>\n" +
+                    Loc.T("<b>Seviye ", "<b>Level ") + lv + " / " + BuildingDatabase.MaxLevel + "</b>\n" +
                     Loc.T("Kazan kapasitesi: <b>", "Cauldron capacity: <b>") + BuildingDatabase.CauldronCapacity(lv) + Loc.T(" atom</b>", " atoms</b>") + NextVal(lv, BuildingDatabase.CauldronCapacity) + "\n" +
                     Loc.T("Pasif yuvası: <b>", "Passive slots: <b>") + BuildingDatabase.PassiveSlots(lv) + "</b>" + NextVal(lv, BuildingDatabase.PassiveSlots) + "\n" +
                     Loc.T("Usta sayısı (aynı anda yükseltme): <b>", "Builders (upgrades at once): <b>") + BuildingDatabase.Builders(lv) + "</b>" + NextVal(lv, BuildingDatabase.Builders) + "\n" +
                     Loc.T("Bilgi geliri: <b>", "Knowledge income: <b>") + Session.KnowledgePerMinute.ToString("0.#") + Loc.T("/dk</b>\n", "/min</b>\n") +
-                    Loc.T("<size=26><color=#A99FC9>Köydeki evler kulenin en fazla 2 seviye üstüne çıkabilir.</color></size>", "<size=26><color=#A99FC9>Village houses can be at most 2 levels above the Tower.</color></size>");
+                    Loc.T("Gizemli sandık: <b>", "Mystery chest: <b>") + ChestName(BuildingDatabase.ChestTier(lv)) + "</b>\n" +
+                    Loc.T("<size=26><color=#A99FC9>Kasabanın binaları kulenin en fazla 2 seviye üstüne çıkabilir.</color></size>", "<size=26><color=#A99FC9>Town buildings can be at most 2 levels above the Tower.</color></size>");
             }
             else
             {
-                info = "<b>" + v.NameTr + "</b>\n" +
+                float sf = BuildingDatabase.SeasonGoldFactor(id, Session.CurrentSeason);
+                info = "<b>" + v.NameTr + "</b>  <color=#A99FC9>\"" + v.RoleTr + "\"</color>\n" +
+                    Loc.T("<size=26>Mahalle ", "<size=26>District ") + v.Group + "</size>" +
+                    (sf != 1f ? "  <size=26><color=" + (sf > 1f ? "#7CF2C8" : "#FF9F9F") + ">" + SeasonClock.NameTr(Session.CurrentSeason) + " " + (sf > 1f ? "+" : "") + Mathf.RoundToInt((sf - 1f) * 100) + "%</color></size>" : "") + "\n" +
                     Loc.T("<b>Seviye ", "<b>Level ") + lv + " / " + BuildingDatabase.MaxLevel + Loc.T("</b>   Altın: <b>", "</b>   Gold: <b>") + BuildingDatabase.GoldPerHour(id, lv).ToString("0.#") + Loc.T("/saat</b>", "/hour</b>") +
                     (lv < BuildingDatabase.MaxLevel ? " <color=#7CF2C8>(→ " + BuildingDatabase.GoldPerHour(id, lv + 1).ToString("0.#") + ")</color>" : "") + "\n";
                 var unlocks = BuildingDatabase.UnlocksOf(id).ToList();
@@ -509,7 +608,9 @@ namespace Sorchemist.UI
                         info += open ? "<color=#7CF2C8>• " + nm + Loc.T(" — açık</color>\n", " — unlocked</color>\n") : "<color=#FFB36B>• " + nm + Loc.T(" — Sv.", " — unlocks at Lv.") + u.Level + Loc.T("'de açılır</color>\n", "</color>\n");
                     }
                 }
-                else info += Loc.T("\n<size=26><color=#A99FC9>Bu ev yeni deney öğretmez ama seviyesi arttıkça köyün altın geliri artar.</color></size>", "\n<size=26><color=#A99FC9>This house teaches no new experiments, but the village earns more gold as it levels up.</color></size>");
+                string perk = PerkText(id, lv);
+                if (perk != null) info += "\n<color=#FFD166>" + perk + "</color>\n";
+                else if (unlocks.Count == 0) info += Loc.T("\n<size=26><color=#A99FC9>Bu bina yeni deney öğretmez ama seviyesi arttıkça kasabanın altın geliri artar.</color></size>", "\n<size=26><color=#A99FC9>This building teaches no new experiments, but the town earns more gold as it levels up.</color></size>");
             }
             var t = UIKit.Txt(body, "Info", info, 32, Theme.Text, TextAnchor.UpperLeft);
             t.rectTransform.anchorMin = Vector2.zero; t.rectTransform.anchorMax = Vector2.one;
@@ -549,6 +650,33 @@ namespace Sorchemist.UI
             var close = UIKit.Wood(UIKit.Btn(row, "Close", Loc.T("Kapat", "Close"), Theme.PanelLight, ClosePanel, 32));
             UIKit.LE(close, -1, -1, 1);
             UpdatePanel();
+        }
+
+        static string ChestName(int tier)
+        {
+            switch (tier)
+            {
+                case 1: return Loc.T("Tahta Kasa", "Wooden Crate");
+                case 2: return Loc.T("Demir Sandık", "Iron Chest");
+                case 3: return Loc.T("Rünlü Gümüş Sandık", "Runic Silver Chest");
+                case 4: return Loc.T("Altın Sandık", "Golden Chest");
+                case 5: return Loc.T("Zümrüt Sandık", "Emerald Chest");
+                default: return Loc.T("Kozmik Sandık", "Cosmic Chest");
+            }
+        }
+
+        /// <summary>Özel binaların seviyeye bağlı etkileri.</summary>
+        static string PerkText(string id, int lv)
+        {
+            switch (id)
+            {
+                case "chronos": return Loc.T("Zaman kumu: demleme ve yükseltme süreleri %", "Time sand: brewing and upgrade times -") + Mathf.RoundToInt((1 - BuildingDatabase.ChronosFactor(lv)) * 100) + Loc.T(" kısa (seviye başına %2)", "% (2% per level)");
+                case "aviary": return Loc.T("Haberci kuşlar: görev altını +%", "Messenger birds: quest gold +") + Mathf.RoundToInt((BuildingDatabase.AviaryGoldFactor(lv) - 1) * 100) + Loc.T(" (seviye başına %3)", "% (3% per level)");
+                case "vault": return Loc.T("Hazine: gizemli sandık altını +%", "Treasure: mystery chest gold +") + Mathf.RoundToInt((BuildingDatabase.VaultFactor(lv) - 1) * 100) + Loc.T(" (seviye başına %10)", "% (10% per level)");
+                case "hollow": return Loc.T("Çıraklar dinlenir: Bilgi geliri +%", "Rested apprentices: Knowledge income +") + Mathf.RoundToInt((BuildingDatabase.HollowKnowledgeFactor(lv) - 1) * 100) + Loc.T(" (seviye başına %3)", "% (3% per level)");
+                case "observatory": case "windmill": return Loc.T("Simyacı Barometresi: Gözlemevi ve Rüzgâr Değirmeni Sv.2 olunca sıradaki mevsim önceden görünür.", "Alchemist's Barometer: with the Observatory and the Wind Mill at Lv.2 you can see the next season in advance.");
+                default: return null;
+            }
         }
 
         static string NextVal(int lv, Func<int, int> f)
@@ -651,7 +779,8 @@ namespace Sorchemist.UI
                 FX.I.FloatText(_objects, "+" + o.Gold + Loc.T(" altın", " gold"), Theme.Gold, at + Vector2.up * 120);
                 string rewards = o.RawRewards.Length > 0 ? Loc.T("\n\nÖdül: ", "\n\nReward: ") + string.Join(", ", Array.ConvertAll(o.RawRewards, r => RawMaterialDatabase.Get(r).NameTr)) : "";
                 ResultPopup.Show(Loc.T("Görev Tamam!", "Quest Complete!"), Theme.Accent, o.MessageTr + rewards, null, "+" + o.Gold + Loc.T(" altın  •  +", " gold  •  +") + o.Xp + " XP",
-                    Loc.T("Aqualf'in iksiri ", "Aqualf's potion cured ") + v.NameTr + Loc.T("'nin derdine deva oldu!", "'s trouble!"), () => { G.HandleLevelUps(rep.LevelUps); Refresh(); }, "portrait_" + v.Id);
+                    Loc.T("Aqualf'in iksiri ", "Aqualf's potion cured ") + v.NameTr + Loc.T("'nin derdine deva oldu!", "'s trouble!"), () => { G.HandleLevelUps(rep.LevelUps); Refresh(); },
+                    Art.Has("gold_1") ? "gold_" + Mathf.Clamp(1 + o.Gold / 40, 1, 6) : "portrait_" + v.Id);
             }
             else if (o.Fail != null)
             {
@@ -681,8 +810,13 @@ namespace Sorchemist.UI
             long now = GameManager.Now;
             foreach (var kv in _houseViews)
             {
-                kv.Value.Find("Bang").gameObject.SetActive(q != null && q.VillagerId == kv.Key);
+                bool open = State.IsDistrictOpen(kv.Key);
+                kv.Value.Find("Bang").gameObject.SetActive(open && q != null && q.VillagerId == kv.Key);
+                kv.Value.Find("Fog").gameObject.SetActive(!open);
+                var keeper = kv.Value.Find("Keeper");
+                if (keeper != null) keeper.gameObject.SetActive(open);
                 ApplyHouseState(kv.Value, State.GetHouse(kv.Key));
+                if (!open) kv.Value.Find("Wall").GetComponent<Image>().color = new Color(0.45f, 0.4f, 0.6f, 1f);
                 UpdateNameplate(kv.Value, kv.Key, now);
             }
             if (_towerView != null) UpdateNameplate(_towerView, BuildingDatabase.Tower, now);
