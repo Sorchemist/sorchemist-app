@@ -99,6 +99,10 @@ namespace Sorchemist.UI
 
         public override bool FullBleed { get { return true; } }
 
+        // Ünlem üst çubukta duruyor: köy ekranı kapanınca o da gizlenir
+        void OnDisable() { if (_questBanner != null) _questBanner.gameObject.SetActive(false); }
+        void OnDestroy() { if (_questBanner != null) Destroy(_questBanner.gameObject); }
+
         public override void Build()
         {
             var bg = UIKit.Img(Root, "Sky", UIKit.Hex("#1E3A2C"));
@@ -208,24 +212,20 @@ namespace Sorchemist.UI
             // Haritayı kuleye ortala
             content.anchoredPosition = new Vector2(0, -IsoToLocal(LabPos.x, LabPos.y).y * Zoom - 470 - G.TopInset * 0.5f);
 
-            // Görev afişi (ekranın üstünde sabit)
-            var banner = UIKit.Btn(Root, "QuestBanner", "", UIKit.Hex("#8E44AD"), OpenQuest, 34);
-            UIKit.Wood(banner);
-            _questBanner = (RectTransform)banner.transform;
-            UIKit.Place(_questBanner, new Vector2(0.5f, 1), new Vector2(0, -70 - G.TopInset), new Vector2(1000, 110));
-            _questText = UIKit.LabelOf(banner);
-
-            var hint = UIKit.Txt(Root, "Hint", Loc.T("Haritada gezin • Evlere dokun: yükselt, sohbet et • Gizemli Kutu'yu kaçırma", "Explore the map • Tap houses to upgrade or chat • Don't miss the Mystery Box"), 26, new Color(1, 1, 1, 0.75f));
-            hint.gameObject.AddComponent<Outline>().effectColor = new Color(0, 0, 0, 0.7f);
-            UIKit.Place(hint.rectTransform, new Vector2(0.5f, 0), new Vector2(0, 26), new Vector2(1400, 44));
-
-            // Ayarlar (sağ üst köşe): ses, titreşim, dil seçimi
-            var set = UIKit.Wood(UIKit.Btn(Root, "SettingsButton", Loc.T("Ayarlar", "Settings"), Theme.PanelLight, () =>
-            {
-                AudioFX.Play(Sfx.Click);
-                HudBar.OpenSettings();
-            }, 30));
-            UIKit.Place((RectTransform)set.transform, new Vector2(1, 1), new Vector2(-20, -20 - G.TopInset), new Vector2(230, 96), new Vector2(1, 1));
+            // Görev: altın göstergesinin sağında zıplayan sarı ünlem (dokununca köylünün derdi açılır)
+            var bangParent = HudBar.GoldFrame != null ? (Transform)HudBar.GoldFrame : Root;
+            var bangBtn = UIKit.Img(bangParent, "QuestBang", UIKit.Hex("#FFD23F"), UIKit.Circle);
+            _questBanner = bangBtn.rectTransform;
+            if (HudBar.GoldFrame != null)
+                UIKit.Place(_questBanner, new Vector2(1, 0.5f), new Vector2(64, 0), new Vector2(86, 86));
+            else
+                UIKit.Place(_questBanner, new Vector2(0.5f, 1), new Vector2(300, -G.TopInset * 0.5f), new Vector2(86, 86));
+            var ring = bangBtn.gameObject.AddComponent<Outline>();
+            ring.effectColor = UIKit.Hex("#7A4A00"); ring.effectDistance = new Vector2(4, -4);
+            bangBtn.gameObject.AddComponent<Button>().onClick.AddListener(OpenQuest);
+            _questText = UIKit.Txt(bangBtn.transform, "Mark", "!", 64, UIKit.Hex("#5A2D00"), TextAnchor.MiddleCenter, FontStyle.Bold);
+            UIKit.Stretch(_questText.rectTransform);
+            bangBtn.gameObject.AddComponent<Bouncer>().Amplitude = 8;
         }
 
         // Nesne kökü: alt orta noktası karonun üst yüz merkezinin biraz önünde
@@ -676,12 +676,7 @@ namespace Sorchemist.UI
         public override void Refresh()
         {
             var q = Session.ActiveQuest;
-            if (q != null)
-            {
-                var v = VillageDatabase.GetVillager(q.VillagerId);
-                _questText.text = "<b>" + v.NameTr + Loc.T("</b> yardım istiyor!  <size=30>(dinlemek için dokun)</size>", "</b> needs help!  <size=30>(tap to listen)</size>");
-            }
-            else _questText.text = Loc.T("Bugün sakin bir gün.", "It's a quiet day.");
+            _questBanner.gameObject.SetActive(q != null);
 
             long now = GameManager.Now;
             foreach (var kv in _houseViews)
@@ -739,9 +734,7 @@ namespace Sorchemist.UI
                     tint = UIKit.Hex("#555555");
                     break;
                 case HouseState.Happy:
-                    var heart = UIKit.Txt(deco, "Happy", "<3", 40, Theme.Danger, TextAnchor.MiddleCenter, FontStyle.Bold);
-                    UIKit.Place(heart.rectTransform, new Vector2(0.5f, 0), new Vector2(130, 280), new Vector2(80, 60));
-                    break;
+                    break;   // mutlu köylü: ek işaret yok
             }
             var v = VillageDatabase.GetVillager(house.name.Substring("House_".Length));
             wall.color = (_artHouses.Contains(v.Id) ? Color.white : UIKit.Hex(v.ColorHex)) * tint;

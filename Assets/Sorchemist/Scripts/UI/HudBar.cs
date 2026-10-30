@@ -20,6 +20,9 @@ namespace Sorchemist.UI
         bool _open = true;
         Coroutine _anim;
         const float BurgerW = 110;
+        const float SettingsW = 190;
+        /// <summary>Üstteki altın göstergesi (köy ekranı görev ünlemini sağına yerleştirir).</summary>
+        public static RectTransform GoldFrame;
 
         public void Build(RectTransform root, float top, float rail)
         {
@@ -67,7 +70,10 @@ namespace Sorchemist.UI
                 _level = UIKit.Txt(lv.transform, "Level", "", 30, Theme.Accent, TextAnchor.MiddleCenter, FontStyle.Bold);
                 UIKit.InFrame(_level.rectTransform, lvSize, 45, 35, 300, 145);
                 _points = UIKit.Txt(lv.transform, "Points", "", 24, Theme.Gold, TextAnchor.MiddleLeft, FontStyle.Bold);
-                UIKit.InFrame(_points.rectTransform, lvSize, 365, 35, 800, 112);
+                UIKit.InFrame(_points.rectTransform, lvSize, 370, 40, 795, 110);
+                _points.horizontalOverflow = HorizontalWrapMode.Wrap;
+                _points.verticalOverflow = VerticalWrapMode.Truncate;   // çerçevenin dışına taşmasın
+                _points.resizeTextForBestFit = true; _points.resizeTextMinSize = 10; _points.resizeTextMaxSize = 24;
                 var xpBg = UIKit.Img(lv.transform, "XpBg", UIKit.Hex("#1E1430"));
                 UIKit.InFrame(xpBg.rectTransform, lvSize, 356, 114, 806, 146);
                 _xpFill = UIKit.Img(xpBg.transform, "XpFill", Theme.Accent);
@@ -80,7 +86,8 @@ namespace Sorchemist.UI
 
                 var dy = Art.Image(bar.transform, "DayFrame", dayArt);
                 var dySize = new Vector2(dayArt.rect.width, dayArt.rect.height);
-                UIKit.Place(dy.rectTransform, new Vector2(1, 0.5f), new Vector2(-24, 0), new Vector2(fh * dySize.x / dySize.y, fh), new Vector2(1, 0.5f));
+                UIKit.Place(dy.rectTransform, new Vector2(1, 0.5f), new Vector2(-24 - SettingsW - 16, 0), new Vector2(fh * dySize.x / dySize.y, fh), new Vector2(1, 0.5f));
+                GoldFrame = gd.rectTransform;
                 _day = UIKit.Txt(dy.transform, "Day", "", 34, Theme.Text, TextAnchor.MiddleCenter, FontStyle.Bold);
                 UIKit.InFrame(_day.rectTransform, dySize, 285, 40, 435, 135);
                 _dayNumberOnly = true;
@@ -103,9 +110,18 @@ namespace Sorchemist.UI
                 _xpFill = UIKit.Img(xpBg.transform, "XpFill", Theme.Accent);
                 _gold = UIKit.Txt(bar.transform, "Gold", "", 42, Theme.Gold, TextAnchor.MiddleCenter, FontStyle.Bold);
                 UIKit.Place(_gold.rectTransform, new Vector2(0.5f, 0.5f), Vector2.zero, new Vector2(360, 80));
+                GoldFrame = _gold.rectTransform;
                 _day = UIKit.Txt(bar.transform, "Day", "", 34, Theme.TextDim, TextAnchor.MiddleRight);
-                UIKit.Place(_day.rectTransform, new Vector2(1, 0.5f), new Vector2(-24, 0), new Vector2(220, 60), new Vector2(1, 0.5f));
+                UIKit.Place(_day.rectTransform, new Vector2(1, 0.5f), new Vector2(-24 - SettingsW - 16, 0), new Vector2(220, 60), new Vector2(1, 0.5f));
             }
+
+            // Ayarlar: gün göstergesinin sağında (her ekranda)
+            var set = UIKit.Wood(UIKit.Btn(bar.transform, "SettingsButton", Loc.T("Ayarlar", "Settings"), Theme.PanelLight, () =>
+            {
+                AudioFX.Play(Sfx.Click);
+                OpenSettings();
+            }, 28));
+            UIKit.Place((RectTransform)set.transform, new Vector2(1, 0.5f), new Vector2(-16, 0), new Vector2(SettingsW, top - 22), new Vector2(1, 0.5f));
             _xpFill.rectTransform.anchorMin = Vector2.zero; _xpFill.rectTransform.anchorMax = new Vector2(0, 1);
             _xpFill.rectTransform.offsetMin = _xpFill.rectTransform.offsetMax = Vector2.zero;
 
@@ -185,8 +201,7 @@ namespace Sorchemist.UI
             if (_points != null)
             {
                 _level.text = Loc.T("Sv. ", "Lv. ") + s.Level;
-                _points.text = "<color=#9EE6FF>" + s.Knowledge + Loc.T(" Bilgi</color>  ", " Knowledge</color>  ") + s.Xp + "/" + PlayerState.XpToNext(s.Level) + " XP";
-                _points.resizeTextForBestFit = true; _points.resizeTextMinSize = 12; _points.resizeTextMaxSize = 24;
+                _points.text = "<color=#9EE6FF>" + s.Knowledge + Loc.T(" Bilgi</color>   ", " Knowledge</color>   ") + s.Xp + "/" + PlayerState.XpToNext(s.Level) + " XP";
             }
             else
                 _level.text = Loc.T("Seviye ", "Level ") + s.Level + Loc.T("  <color=#9EE6FF>", "  <color=#9EE6FF>") + s.Knowledge + Loc.T(" Bilgi</color>", " Knowledge</color>");
