@@ -342,6 +342,9 @@ namespace Sorchemist.Core
                 new[] { "ash" },
                 "Tıraş sabunum bitti, müşteriler kuru kuru tıraş oluyor. Ah ah!",
                 "Yağı köpüklü sabuna dönüştüren güçlü bazı getirirsen hemen sabun pişiririm.");
+
+            // ---- Görev bankası: toplam 2000 göreve tamamla (Türkçe + İngilizce) ----
+            QuestBank.GenerateInto(_quests);
         }
     }
 

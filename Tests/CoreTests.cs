@@ -86,7 +86,18 @@ static class CoreTests
         bool namesOk = true;
         foreach (var v in VillageDatabase.Villagers) if (v.NameTr != v.RoleTr) namesOk = false;
         Check(namesOk && VillageDatabase.GetVillager("tasusta").NameTr == "Taş Ustası", "Köylü adı = bina/meslek adı");
-        Check(VillageDatabase.Quests.Count >= 52, "En az 52 görev");
+        Check(VillageDatabase.Quests.Count == QuestBank.TotalQuests, "Toplam 2000 görev");
+        var ids = new HashSet<string>();
+        bool genOk = true;
+        foreach (var q in VillageDatabase.Quests)
+        {
+            if (!ids.Add(q.Id) || VillageDatabase.GetVillager(q.VillagerId) == null) genOk = false;
+            if (q.DialogueEn == null || q.SuccessEn == null || q.DialogueTr.Length != q.DialogueEn.Length) genOk = false;
+        }
+        Check(genOk, "Görev kimlikleri benzersiz, köylüler geçerli, her görevin İngilizcesi var");
+        var texts = new HashSet<string>();
+        foreach (var q in VillageDatabase.Quests) texts.Add(string.Join("|", q.DialogueTr));
+        Check(texts.Count == VillageDatabase.Quests.Count, "Hiçbir görevin metni birebir tekrar etmiyor");
         bool solvable = true;
         foreach (var q in VillageDatabase.Quests)
         {
