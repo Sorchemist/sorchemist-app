@@ -38,6 +38,8 @@ namespace Sorchemist.UI
 
         void Build(RectTransform root, string name, string role, string colorHex, string portraitKey)
         {
+            // Köylülerin adı mesleğiyle aynı; meslek satırı tekrar etmesin
+            if (role == name) role = Loc.T("Fındıkdere köylüsü", "Hazelbrook villager");
             var frameArt = Art.Get("frame_dialog");
             Image box;
             RectTransform portraitArea, nameArea, textArea, choiceArea;

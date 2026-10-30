@@ -91,8 +91,7 @@ namespace Sorchemist.Core
         {
             if (id == Tower) return Loc.T("Aqualf'in Kulesi", "Aqualf's Tower");
             var v = VillageDatabase.GetVillager(id);
-            if (v == null) return id;
-            return Loc.En ? v.RoleTr + "'s House" : v.RoleTr + " Evi";
+            return v != null ? v.RoleTr : id;   // bina adı = meslek (tabeladaki ad)
         }
 
         // ----- Kule seviyesinin etkileri -----

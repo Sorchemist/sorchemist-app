@@ -64,11 +64,17 @@ namespace Sorchemist.Core
 
         private void Notify() { if (Changed != null) Changed(); }
 
+        /// <summary>Görevin istediği etkiyi veren ve kilidi açık bir bileşik var mı?</summary>
+        public bool CanMakeFor(QuestData q)
+        {
+            return CompoundDatabase.All.Any(c => c.Effect == q.Needed && State.IsUnlocked(c.Id));
+        }
+
         public QuestData ActiveQuest { get { return VillageDatabase.GetQuest(State.ActiveQuestId); } }
 
         public void PickNextQuest()
         {
-            var q = QuestResolver.NextQuest(State.Level, State.CompletedQuests, _rng);
+            var q = QuestResolver.NextQuest(State.Level, State.CompletedQuests, _rng, CanMakeFor);
             State.ActiveQuestId = q != null ? q.Id : null;
         }
 

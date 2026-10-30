@@ -82,10 +82,30 @@ static class CoreTests
         g.Unequip(PassiveDatabase.CopperPot);
         Check(g.Equip(PassiveDatabase.Owl) == null && g.State.HasPassive(PassiveDatabase.Owl), "Çıkar-tak çalışır");
 
+        Console.WriteLine("Köylüler ve görevler");
+        bool namesOk = true;
+        foreach (var v in VillageDatabase.Villagers) if (v.NameTr != v.RoleTr) namesOk = false;
+        Check(namesOk && VillageDatabase.GetVillager("tasusta").NameTr == "Taş Ustası", "Köylü adı = bina/meslek adı");
+        Check(VillageDatabase.Quests.Count >= 52, "En az 52 görev");
+        bool solvable = true;
+        foreach (var q in VillageDatabase.Quests)
+        {
+            bool any = false;
+            foreach (var c in CompoundDatabase.All) if (c.Effect == q.Needed) any = true;
+            if (!any || q.RewardGold <= 0 || q.RewardXp <= 0) solvable = false;
+        }
+        Check(solvable, "Her görev bir bileşikle çözülür ve altın + XP verir");
+        var ice = QuestResolver.Deliver(VillageDatabase.GetQuest("q_ice_pier"), CompoundDatabase.Get("salt"), new Random(1));
+        Check(ice.Success && ice.Gold == 40, "Tuz iskeledeki buzu eritir");
+        var g2 = new GameSession(PlayerState.NewGame(), 3);
+        g2.State.Level = 6;
+        g2.PickNextQuest();
+        Check(g2.CanMakeFor(g2.ActiveQuest), "Önce yapılabilir iksir isteyen görev gelir");
+
         Console.WriteLine("Dil (İngilizce)");
         Loc.Current = Lang.En;
         Check(ElementDatabase.Get("Fe").NameTr == "Iron" && CompoundDatabase.Get("salt").NameTr == "Table Salt", "Element ve bileşik adları İngilizce");
-        Check(VillageDatabase.GetVillager("bal").RoleTr == "Baker" && VillageDatabase.GetQuest("q_thirst").DialogueTr[0].StartsWith("Aqualf!"), "Köylü ve görev metinleri İngilizce");
+        Check(VillageDatabase.GetVillager("bal").NameTr == "Baker" && VillageDatabase.GetQuest("q_thirst").DialogueTr[0].StartsWith("Aqualf!"), "Köylü ve görev metinleri İngilizce");
         Check(FailDexDatabase.Get("midas").TitleTr == "Midas Cauldron" && PassiveDatabase.Get(PassiveDatabase.Owl).NameTr == "Wise Owl", "Fail-Dex ve pasifler İngilizce");
         Check(AlchemyNames.Name(1) == "Pure Dew Essence" && BuildingDatabase.NameTr("tower") == "Aqualf's Tower", "Simya adları ve binalar İngilizce");
         bool allEn = true;

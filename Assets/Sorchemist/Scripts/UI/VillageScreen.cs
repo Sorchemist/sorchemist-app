@@ -490,7 +490,7 @@ namespace Sorchemist.UI
             }
             else
             {
-                info = "<b>" + v.NameTr + "</b> <color=#A99FC9>(" + v.RoleTr + ")</color>\n" +
+                info = "<b>" + v.NameTr + "</b>\n" +
                     Loc.T("<b>Seviye ", "<b>Level ") + lv + " / " + BuildingDatabase.MaxLevel + Loc.T("</b>   Altın: <b>", "</b>   Gold: <b>") + BuildingDatabase.GoldPerMinute(id, lv) + Loc.T("/dk</b>", "/min</b>") +
                     (lv < BuildingDatabase.MaxLevel ? " <color=#7CF2C8>(→ " + BuildingDatabase.GoldPerMinute(id, lv + 1) + ")</color>" : "") + "\n";
                 var unlocks = BuildingDatabase.UnlocksOf(id).ToList();

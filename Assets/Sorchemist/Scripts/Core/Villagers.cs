@@ -103,32 +103,32 @@ namespace Sorchemist.Core
             _villagers = new List<VillagerData>();
             _quests = new List<QuestData>();
 
-            // Görevli köylüler (7x7 izometrik harita konumlarıyla)
-            V("fistik", "Fıstık Dede", "Çiftçi", 1, 4, "#A9744F");
-            V("bal", "Bal Teyze", "Fırıncı", 2, 2, "#F5B041");
-            V("pirtik", "Minik Pırtık", "Çoban", 1, 2, "#F1948A");
-            V("tokmak", "Demirci Tokmak", "Demirci", 1, 1, "#5D6D7E");
-            V("ebe", "Ebe Nine", "Şifacı", 2, 4, "#AF7AC5");
-            V("fener", "Fener", "Av Koruyucusu", 4, 4, "#F4D03F");
-            V("zeytin", "Kâhya Zeytin", "Hancı", 4, 2, "#7DCEA0");
-            V("kopuk", "Çamaşırcı Köpük", "Çamaşırcı", 4, 3, "#85C1E9");
-            V("filiz", "Filiz", "Ormancı", 3, 1, "#58D68D");
-            V("ruzgar", "Değirmenci Rüzgâr", "Değirmenci", 2, 1, "#D7BDE2");
-            // Diğer köy halkı (şimdilik sohbet; ileride görev verebilirler)
-            V("oduncu", "Kütük", "Oduncu", 1, 0, "#8D6E63", "Bu meşeler yüz yaşında. Külleri bile bereketlidir, potasyum doludur!", "Baltam keskin, odunum kuru. Kış hazır!");
-            V("marangoz", "Rende Usta", "Marangoz", 2, 0, "#A1887F", "Kazanın için yeni bir raf mı lazım? Ölç, biç, sonra kes!", "Talaş kokusu gibisi yok.");
-            V("tasusta", "Çakıl", "Taş Ustası", 4, 0, "#90A4AE", "Kireç taşını kızdırırsan sönmemiş kireç olur, bilir misin?", "Her taşın içinde bir heykel saklıdır.");
-            V("derici", "Tabak", "Derici", 4, 1, "#795548", "Deriyi yumuşatmak için tuz ve sabır gerekir.", "Kokuya alışırsın. Galiba.");
-            V("komurcu", "İs", "Kömürcü", 0, 2, "#455A64", "Kömür saf karbondur! Ben de biraz karbon gibi görünüyorum.", "Ocakların hepsi benim kömürümle yanar.");
-            V("kunduraci", "Çivi", "Kunduracı", 5, 2, "#6D4C41", "Ayakkabın delinmiş Aqualf. Damla gibi akıyorsun!", "Her adım bir hikâyedir.");
-            V("asci", "Kepçe", "Aşçı", 1, 3, "#EF6C00", "Mutfak da bir laboratuvar! Tuz, karbonat, sirke... hepsi kimya.", "Çorbanın sırrı: azıcık tuz.");
-            V("sucu", "Damla", "Sucu", 2, 3, "#29B6F6", "Kuyu suyu tertemiz. H2O, başka bir şey yok!", "Kovalarım hep dolu, gönlüm de.");
-            V("terzi", "Makas", "Terzi", 5, 3, "#AB47BC", "Kumaşları göztaşıyla mavi, pasla kırmızı boyarım.", "Ölçü al, ölçü al, sonra bir daha ölçü al.");
-            V("dokumaci", "İlmek", "Dokumacı", 0, 4, "#EC407A", "Tezgâhımda renk renk ipler... boyaları senden alıyorum!", "Bir ilmek daha, bir ilmek daha.");
-            V("balikci", "Olta", "Balıkçı", 5, 4, "#0277BD", "Nehir bugün cömert. Deniz suyu da tuz doludur, haberin olsun.", "Sabır balıkçının en iyi yemidir.");
-            V("comlekci", "Testi", "Çömlekçi", 1, 5, "#BF7B4C", "Kil ve kum, ateşte birleşince sağlam bir çömlek olur.", "Elime çamur bulaşmadan gün geçmez.");
-            V("berber", "Fırça", "Berber", 2, 5, "#7E57C2", "Saçların hâlâ isli mi? Gel bir düzelteyim!", "Köyün bütün dedikoduları bu koltukta konuşulur.");
-            V("arici", "Petek", "Arıcı", 4, 5, "#FBC02D", "Arılarım çiçekleri sever; sen de iksirleri.", "Bal, doğanın kendi simyasıdır.");
+            // Köylüler: adları evlerinin tabelasındaki meslekle aynıdır (Fırıncı, Demirci, Aşçı...)
+            V("fistik", "Çiftçi", "Çiftçi", 1, 4, "#A9744F", "Toprak cömerttir ama ekşiyse hiçbir şey yetişmez.", "Bu yıl kabaklar kocaman olacak, hissediyorum!");
+            V("bal", "Fırıncı", "Fırıncı", 2, 2, "#F5B041", "Karbonat hamuru kabartır, maya ise sabrı.", "Fırının ısısı iyi ekmeğin yarısıdır.");
+            V("pirtik", "Çoban", "Çoban", 1, 2, "#F1948A", "Koyunlarım beni dinler, keçiler dinlemez.", "Yün kırkarken hep hapşırırım!");
+            V("tokmak", "Demirci", "Demirci", 1, 1, "#5D6D7E", "Demir paslanır, çelik dayanır. Fark karbondadır!", "Örs başında ritim her şeydir: tak, tak, tak!");
+            V("ebe", "Şifacı", "Şifacı", 2, 4, "#AF7AC5", "Her yaraya bir iksir, her derde bir çay.", "Yaraları temiz tutarsan yarısı kendi kendine iyileşir.");
+            V("fener", "Av Koruyucusu", "Av Koruyucusu", 4, 4, "#F4D03F", "Gece ormanda gözler parlar. Çoğu baykuş. Çoğu...", "İz sürmek sabır ister, tıpkı simya gibi.");
+            V("zeytin", "Hancı", "Hancı", 4, 2, "#7DCEA0", "Handa bugün meyve gazozu var. Gazı da senden!", "Yolcular uzak diyarlardan haberler getirir.");
+            V("kopuk", "Çamaşırcı", "Çamaşırcı", 4, 3, "#85C1E9", "Sabun yağı söker, ben de lekeleri!", "Rüzgârlı gün, çamaşırın bayramıdır.");
+            V("filiz", "Ormancı", "Ormancı", 3, 1, "#58D68D", "Her ağaç bir zamanlar bir tohumdu.", "Ormanda yangın çıkmasın diye gözüm hep dumanda.");
+            V("ruzgar", "Değirmenci", "Değirmenci", 2, 1, "#D7BDE2", "Rüzgâr eserse un, esmezse dert.", "Değirmen taşı döndükçe köy doyar.");
+            // Köyün diğer sakinleri
+            V("oduncu", "Oduncu", "Oduncu", 1, 0, "#8D6E63", "Bu meşeler yüz yaşında. Külleri bile bereketlidir, potasyum doludur!", "Baltam keskin, odunum kuru. Kış hazır!");
+            V("marangoz", "Marangoz", "Marangoz", 2, 0, "#A1887F", "Kazanın için yeni bir raf mı lazım? Ölç, biç, sonra kes!", "Talaş kokusu gibisi yok.");
+            V("tasusta", "Taş Ustası", "Taş Ustası", 4, 0, "#90A4AE", "Kireç taşını kızdırırsan sönmemiş kireç olur, bilir misin?", "Her taşın içinde bir heykel saklıdır.");
+            V("derici", "Derici", "Derici", 4, 1, "#795548", "Deriyi yumuşatmak için tuz ve sabır gerekir.", "Kokuya alışırsın. Galiba.");
+            V("komurcu", "Kömürcü", "Kömürcü", 0, 2, "#455A64", "Kömür saf karbondur! Ben de biraz karbon gibi görünüyorum.", "Ocakların hepsi benim kömürümle yanar.");
+            V("kunduraci", "Kunduracı", "Kunduracı", 5, 2, "#6D4C41", "Ayakkabın delinmiş Aqualf. Damla gibi akıyorsun!", "Her adım bir hikâyedir.");
+            V("asci", "Aşçı", "Aşçı", 1, 3, "#EF6C00", "Mutfak da bir laboratuvar! Tuz, karbonat, sirke... hepsi kimya.", "Çorbanın sırrı: azıcık tuz.");
+            V("sucu", "Sucu", "Sucu", 2, 3, "#29B6F6", "Kuyu suyu tertemiz. H2O, başka bir şey yok!", "Kovalarım hep dolu, gönlüm de.");
+            V("terzi", "Terzi", "Terzi", 5, 3, "#AB47BC", "Kumaşları göztaşıyla mavi, pasla kırmızı boyarım.", "Ölçü al, ölçü al, sonra bir daha ölçü al.");
+            V("dokumaci", "Dokumacı", "Dokumacı", 0, 4, "#EC407A", "Tezgâhımda renk renk ipler... boyaları senden alıyorum!", "Bir ilmek daha, bir ilmek daha.");
+            V("balikci", "Balıkçı", "Balıkçı", 5, 4, "#0277BD", "Nehir bugün cömert. Deniz suyu da tuz doludur, haberin olsun.", "Sabır balıkçının en iyi yemidir.");
+            V("comlekci", "Çömlekçi", "Çömlekçi", 1, 5, "#BF7B4C", "Kil ve kum, ateşte birleşince sağlam bir çömlek olur.", "Elime çamur bulaşmadan gün geçmez.");
+            V("berber", "Berber", "Berber", 2, 5, "#7E57C2", "Saçların hâlâ isli mi? Gel bir düzelteyim!", "Köyün bütün dedikoduları bu koltukta konuşulur.");
+            V("arici", "Arıcı", "Arıcı", 4, 5, "#FBC02D", "Arılarım çiçekleri sever; sen de iksirleri.", "Bal, doğanın kendi simyasıdır.");
 
             Q("q_thirst", "filiz", 1, PotionEffect.Hydrate, 20, 15, "Fidelerim kana kana içti! Sana en güzel çiçeğimi ayırdım.",
                 new[] { "dewcap" },
@@ -140,7 +140,7 @@ namespace Sorchemist.Core
                 "Yiyecekleri koruyan o beyaz, tuzlu şeyden lazım. Denizden geldiğini söylerler.");
             Q("q_tummy", "pirtik", 2, PotionEffect.Soothe, 30, 25, "Karnım geçti! Yaşasın! Sana bir kurbağa yakaladım. Şaka şaka.",
                 new[] { "seawater" },
-                "Fıstık Dede'nin bütün ekşi eriklerini yedim... karnım yanıyor.",
+                "Çiftçi'nin bütün ekşi eriklerini yedim... karnım yanıyor.",
                 "Annem 'bir baz lazım, asidi nötrleştirsin' diyor. Ne demekse!");
             Q("q_bugs", "fistik", 2, PotionEffect.PestControl, 40, 35, "Böcekler kaçtı! Bu yıl bağdan bol üzüm çıkacak.",
                 new[] { "malachite" },
@@ -244,6 +244,104 @@ namespace Sorchemist.Core
                 new[] { "sand" },
                 "Çömleklerimi sırlamak için cam tozu lazım.",
                 "Kumdan cam olur, ama çok sıcak bir ateşte!");
+
+            // ---- Zekâ görevleri: her köylünün kimyayla çözülen ikinci bir derdi ----
+            Q("q_ice_pier", "balikci", 3, PotionEffect.Preserve, 40, 35, "İskele artık kaymıyor! Tuz buzun donma noktasını düşürdü, buz eridi.",
+                new[] { "seawater" },
+                "Gece ayaz vurdu, iskele cam gibi buz tuttu. Az kalsın nehre uçuyordum!",
+                "Deniz suyu kolay kolay donmaz, değil mi? Neden acaba... İçindeki o beyaz tanecikler yüzünden mi?");
+            Q("q_bee_sting", "arici", 2, PotionEffect.Soothe, 30, 25, "Şişlik indi, kaşıntı geçti! Baz, iğnedeki asidi nötrledi.",
+                new[] { "dewcap" },
+                "Bir arı tam burnumun ucunu soktu. Şimdi burnum bir şalgam!",
+                "Arı iğnesi biraz asidikmiş. Asidi söndüren, mideye de iyi gelen o beyaz tozdan sürsem?");
+            Q("q_sour_bread", "bal", 3, PotionEffect.Soothe, 40, 35, "Ekmek hem kabardı hem ekşiliği gitti. Karbonat + asit = kabarcık!",
+                new[] { "ash" },
+                "Ekşi mayam fazla coştu, ekmekler limon gibi ekşi oldu.",
+                "Ekşiliği alacak, üstüne bir de hamuru kabartacak bir şey lazım. Bir taşla iki kuş!");
+            Q("q_axe_rust", "oduncu", 3, PotionEffect.Dissolve, 40, 35, "Balta pırıl pırıl! Asit pası çözdü, demir göründü.",
+                new[] { "hematite" },
+                "Baltamı yağmurda unuttum, üstü kıpkırmızı pas tuttu.",
+                "Pası kazımak yerine eritebilsem... Güçlü bir asit pası çözer, öyle değil mi?");
+            Q("q_etching", "tokmak", 4, PotionEffect.Dissolve, 55, 50, "Kılıcın üstündeki desen harika çıktı! Asit sadece mumsuz yerleri yedi.",
+                new[] { "hematite" },
+                "Kralın muhafızı kılıcına ejderha deseni istiyor. Çekiçle olmaz bu iş.",
+                "Çeliği mumla kaplayıp deseni kazıyacağım. Açıkta kalan yerleri yiyecek bir asit lazım.");
+            Q("q_sour_soil", "fistik", 4, PotionEffect.Build, 50, 45, "Lahanalar fışkırdı! Kireç taşı toprağın asidini nötrledi.",
+                new[] { "guano" },
+                "Tarlamın toprağı ekşi, lahanalarım sapsarı.",
+                "Babam toprağa beyaz taş tozu serperdi. Taş bina yapmaya yarar ama toprağı da tatlandırırmış!");
+            Q("q_damp_flour", "ruzgar", 5, PotionEffect.Warmth, 60, 55, "Ambar kupkuru! Sönmemiş kireç nemi kapıp hapsetti.",
+                new[] { "limestone" },
+                "Ambarda nem var, un çuvalları küflenmeye başladı.",
+                "Havadaki suyu kendine çeken, suyla buluşunca ısınan o kireç... Ambarın köşesine bir kase koysak?");
+            Q("q_woodworm", "marangoz", 4, PotionEffect.PestControl, 50, 45, "Kurtlar tahtayı bıraktı! Bakır tuzu ahşabı korur.",
+                new[] { "malachite" },
+                "Dolaplarımı tahta kurtları yiyor. Gece çıtır çıtır sesler geliyor!",
+                "Bağcılar böceğe karşı mavi bir taş kullanıyor. Aynı şey ahşabı da korur mu?");
+            Q("q_raddle", "pirtik", 3, PotionEffect.Pigment, 40, 35, "Koçlarım kırmızı göğüslü! Hangi koyun kimin, artık belli.",
+                new[] { "hematite" },
+                "Komşunun koyunlarıyla benimkiler karıştı. Hepsi aynı beyaz!",
+                "Çobanlar eskiden koyunları kızıl toprakla işaretlermiş. Demirden gelen o kızıl boyadan var mı?");
+            Q("q_fever", "ebe", 4, PotionEffect.Cool, 55, 50, "Ateş düştü. Soğutan kompres ısıyı çekti aldı.",
+                new[] { "air" },
+                "Değirmencinin çocuğu ateşler içinde yanıyor.",
+                "Suya karışınca kendiliğinden buz gibi olan o tuzdan bir kompres yapabilir misin?");
+            Q("q_greenhouse", "filiz", 5, PotionEffect.Glass, 65, 55, "Sera hazır! Cam ışığı alır, ısıyı tutar; fideler bayılacak.",
+                new[] { "sand" },
+                "Kış gelmeden nadir fidelerimi korumam gerek. Bir sera yapmak istiyorum.",
+                "Işığı geçiren ama soğuğu geçirmeyen bir şey... Kumdan yapılan o şeffaf şey!");
+            Q("q_flare", "fener", 6, PotionEffect.Fireworks, 75, 65, "Gökyüzü kıpkırmızı parladı, kayıp avcı yolunu buldu!",
+                new[] { "crystal" },
+                "Bir avcı ormanda kayboldu, akşam çöküyor.",
+                "Gökyüzüne bir işaret fişeği atsam görür. Potasyum, azot, oksijen... hızlı yanan o tuz!");
+            Q("q_lemonade", "zeytin", 3, PotionEffect.Fizz, 40, 35, "Limonata fokur fokur! Müşteriler bardaklarını tokuşturuyor.",
+                new[] { "dewcap" },
+                "Handaki limonata düz su gibi, müşteriler esniyor.",
+                "İçine o gıdıklayan kabarcıkları koyabilir miyiz? Kömür yanınca çıkan gaz değil mi o?");
+            Q("q_bleach", "kopuk", 5, PotionEffect.Disinfect, 60, 55, "Gelinlik kar gibi bembeyaz! Peroksit sarı lekeleri oksitledi.",
+                new[] { "air" },
+                "Hancının kızı evleniyor ama gelinlik sandıkta sararmış.",
+                "Mikrop öldüren, köpüren o sıvı aynı zamanda ağartır diyorlar. Soğuk tut ama!");
+            Q("q_boulder", "tasusta", 6, PotionEffect.Fireworks, 80, 70, "BUM! Kaya paramparça, yol açıldı. Güherçile barutun kalbidir.",
+                new[] { "sulfur" },
+                "Heyelan oldu, dev bir kaya taş ocağının yolunu kapattı.",
+                "Kırk adam itse kımıldamaz. Barutun içindeki o tuz lazım: güherçile!");
+            Q("q_dehair", "derici", 4, PotionEffect.Cleanse, 50, 45, "Kıllar döküldü, deri tertemiz! Güçlü baz işini yaptı.",
+                new[] { "ash" },
+                "Deriler kıllı kıllı, tabaklayamıyorum.",
+                "Kılları gevşetecek, yağı da sökecek güçlü bir baz lazım. Sabun yapımında kullanılan şey!");
+            Q("q_smelly_boots", "kunduraci", 3, PotionEffect.Soothe, 40, 35, "Kokular gitti! Karbonat terdeki asitleri nötrledi.",
+                new[] { "seawater" },
+                "Oduncunun çizmeleri tamire geldi ama... kokusundan dükkâna giremiyorum!",
+                "Kokuyu yapan şey ekşi bir asitmiş. Asidi nötrleyen beyaz toz neydi?");
+            Q("q_mirror", "terzi", 6, PotionEffect.Glass, 70, 60, "Boy aynası geldi! Müşteriler kendilerine hayran.",
+                new[] { "sand" },
+                "Müşteriler kıyafetleri denerken kendilerini göremiyor.",
+                "Gümüşle kaplanınca ayna olan o şeffaf malzeme lazım. Kum ve büyük ateş!");
+            Q("q_mordant", "dokumaci", 5, PotionEffect.PestControl, 60, 55, "Renkler yıkansa da akmıyor! Bakır sülfat boyayı ipliğe kilitledi.",
+                new[] { "malachite" },
+                "Halılarımın boyası ilk yıkamada akıp gidiyor.",
+                "Boyacılar 'mordan' denen bir tuzla boyayı ipliğe sabitlermiş. O mavi kristal olabilir mi?");
+            Q("q_red_glaze", "comlekci", 4, PotionEffect.Pigment, 50, 45, "Fırından kızıl sırlı çömlekler çıktı! Demir oksit ateşte renk verir.",
+                new[] { "hematite" },
+                "Pazarda herkes kızıl çömlek istiyor, benimkiler hep kahverengi.",
+                "Sıra demir pasının kızılını kullanmakta. Ateşte solmayan bir renk o!");
+            Q("q_smolder", "komurcu", 6, PotionEffect.Fizz, 75, 65, "Ateş söndü! CO2 havadan ağırdır, oksijeni kesip alevi boğdu.",
+                new[] { "limestone" },
+                "Kömür yığınım içten için için yanıyor, su dökersem buhar patlaması olur!",
+                "Ateşin nefesini kesecek, oksijenin yerini alacak ağır bir gaz lazım.");
+            Q("q_green_well", "sucu", 3, PotionEffect.Disinfect, 40, 35, "Kuyu yine berrak! Peroksit yosunu yaktı, geriye su ve oksijen kaldı.",
+                new[] { "air" },
+                "Kuyunun suyu yeşillendi, yosun bastı. Kimse içmek istemiyor.",
+                "Suyu temizleyen ama bozunduğunda sadece su ve oksijen bırakan bir şey olsa...");
+            Q("q_copper_pots", "asci", 4, PotionEffect.Dissolve, 50, 45, "Bakır tencereler gün gibi parlıyor! Asit kararmayı çözdü.",
+                new[] { "malachite" },
+                "Bakır tencerelerim kapkara ve yeşil lekeli oldu.",
+                "Biraz asit bakırın üstündeki kirli tabakayı çözer. Mideye de benzeyen o asit!");
+            Q("q_shave_soap", "berber", 5, PotionEffect.Cleanse, 55, 50, "Köpük bol, ustura kaygan! Sabunlaşma harikası.",
+                new[] { "ash" },
+                "Tıraş sabunum bitti, müşteriler kuru kuru tıraş oluyor. Ah ah!",
+                "Yağı köpüklü sabuna dönüştüren güçlü bazı getirirsen hemen sabun pişiririm.");
         }
     }
 
@@ -310,13 +408,15 @@ namespace Sorchemist.Core
         }
 
         /// <summary>Sıradaki görev: önce açılmamış hikâye görevleri, bitince tekrar eden istekler.</summary>
-        public static QuestData NextQuest(int level, ICollection<string> completed, Random rng)
+        /// <param name="canMake">Verilirse, oyuncunun şu an yapabildiği iksirleri isteyen görevler önce gelir.</param>
+        public static QuestData NextQuest(int level, ICollection<string> completed, Random rng, Func<QuestData, bool> canMake = null)
         {
-            var story = VillageDatabase.Quests
-                .Where(q => q.MinLevel <= level && !completed.Contains(q.Id))
-                .OrderBy(q => q.MinLevel).FirstOrDefault();
+            var open = VillageDatabase.Quests.Where(q => q.MinLevel <= level && !completed.Contains(q.Id)).ToList();
+            var story = (canMake != null ? open.Where(canMake).OrderBy(q => q.MinLevel).FirstOrDefault() : null)
+                        ?? open.OrderBy(q => q.MinLevel).FirstOrDefault();
             if (story != null) return story;
             var pool = VillageDatabase.Quests.Where(q => q.MinLevel <= level).ToList();
+            if (canMake != null && pool.Any(canMake)) pool = pool.Where(canMake).ToList();
             return pool.Count == 0 ? null : pool[rng.Next(pool.Count)];
         }
     }
