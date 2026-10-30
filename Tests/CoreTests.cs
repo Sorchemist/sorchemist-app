@@ -98,6 +98,9 @@ static class CoreTests
         var texts = new HashSet<string>();
         foreach (var q in VillageDatabase.Quests) texts.Add(string.Join("|", q.DialogueTr));
         Check(texts.Count == VillageDatabase.Quests.Count, "Hiçbir görevin metni birebir tekrar etmiyor");
+        var problems = new HashSet<string>();
+        foreach (var q in VillageDatabase.Quests) problems.Add(q.DialogueTr[0]);
+        Check(problems.Count == VillageDatabase.Quests.Count, "Her görevin kendine ait ayrı bir derdi var");
         bool solvable = true;
         foreach (var q in VillageDatabase.Quests)
         {
