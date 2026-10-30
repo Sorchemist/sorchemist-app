@@ -157,23 +157,29 @@ namespace Sorchemist.UI
     {
         public static void Show(Action<string> onPick)
         {
+            Show(Loc.T("Hangi iksiri vereceksin?", "Which potion will you give?"), null, true, onPick);
+        }
+
+        /// <summary>İksir seçici. onlyOwned=false ise bütün bileşikler listelenir (ör. takasta istenen iksir).</summary>
+        public static void Show(string title, Func<CompoundData, bool> filter, bool onlyOwned, Action<string> onPick)
+        {
             var gm = GameManager.I;
             RectTransform body;
-            var modal = UIKit.Modal(gm.Overlay, Loc.T("Hangi iksiri vereceksin?", "Which potion will you give?"), out body, 900, 1200);
+            var modal = UIKit.Modal(gm.Overlay, title, out body, 900, 1200);
             RectTransform list;
             var sr = UIKit.Scroll(body, "Scroll", true, false, out list);
             UIKit.Stretch((RectTransform)sr.transform, 0, 0, 0, 130);
             UIKit.VList(list, 14, 6);
 
             bool any = false;
-            foreach (var st in gm.State.Potions)
+            foreach (var c in CompoundDatabase.All)
             {
-                var c = CompoundDatabase.Get(st.Id);
-                if (c == null || st.Count <= 0) continue;
+                int have = gm.State.PotionCount(c.Id);
+                if ((onlyOwned && have <= 0) || (filter != null && !filter(c))) continue;
                 any = true;
-                string id = st.Id;
+                string id = c.Id;
                 var b = UIKit.Btn(list, "P_" + id,
-                    c.NameTr + " (" + c.Formula + ")  x" + st.Count + Loc.T("\n<size=28><color=#A99FC9>Etki: ", "\n<size=28><color=#A99FC9>Effect: ") +
+                    c.NameTr + " (" + c.Formula + ")  x" + have + Loc.T("\n<size=28><color=#A99FC9>Etki: ", "\n<size=28><color=#A99FC9>Effect: ") +
                     CompoundDatabase.EffectNameTr(c.Effect) + "</color></size>",
                     Theme.PanelLight, () => { UnityEngine.Object.Destroy(modal.gameObject); onPick(id); }, 36);
                 UIKit.LE(b, 120);
@@ -187,6 +193,25 @@ namespace Sorchemist.UI
             }
             var close = UIKit.Btn(body, "Close", Loc.T("Vazgeç", "Cancel"), Theme.Danger, () => UnityEngine.Object.Destroy(modal.gameObject));
             UIKit.Place((RectTransform)close.transform, new Vector2(0.5f, 0), new Vector2(0, 50), new Vector2(460, 100));
+        }
+    }
+
+    /// <summary>İki seçenekli onay penceresi (ör. "Buluttaki kaydı yükle / Bu cihazdakini kullan").</summary>
+    public static class ChoiceDialog
+    {
+        public static void Show(string title, string body, string aLabel, Action a, string bLabel, Action b, Color? aColor = null)
+        {
+            var gm = GameManager.I;
+            RectTransform card;
+            var modal = UIKit.Modal(gm.Overlay, title, out card, 640, 1200);
+            var t = UIKit.Txt(card, "Body", body, 34, Theme.Text, TextAnchor.UpperCenter);
+            UIKit.Stretch(t.rectTransform, 20, 10, 20, 150);
+            var row = UIKit.Rect("Buttons", card);
+            row.anchorMin = Vector2.zero; row.anchorMax = new Vector2(1, 0); row.pivot = new Vector2(0.5f, 0);
+            row.offsetMin = new Vector2(0, 10); row.offsetMax = new Vector2(0, 120);
+            UIKit.HList(row, 20);
+            UIKit.Wood(UIKit.Btn(row, "A", aLabel, aColor ?? Theme.Accent, () => { UnityEngine.Object.Destroy(modal.gameObject); if (a != null) a(); }, 32));
+            UIKit.Wood(UIKit.Btn(row, "B", bLabel, Theme.PanelLight, () => { UnityEngine.Object.Destroy(modal.gameObject); if (b != null) b(); }, 32));
         }
     }
 }

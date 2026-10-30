@@ -116,6 +116,19 @@ static class CoreTests
         g2.PickNextQuest();
         Check(g2.CanMakeFor(g2.ActiveQuest), "Önce yapılabilir iksir isteyen görev gelir");
 
+        Console.WriteLine("Çevrimiçi (JSON ve bulut kaydı)");
+        var jn = JNode.From("{\"ok\":true,\"user\":{\"id\":42,\"name\":\"Ay\\u015fe\"},\"list\":[1,2.5,\"x\"],\"n\":null}");
+        Check(jn["ok"].Bool && jn["user"]["id"].Int == 42 && jn["user"]["name"].Str == "Ayşe" && jn["list"].Count == 3 && jn["n"].IsNull, "JSON okunur");
+        var ser = MiniJson.Serialize(new Dictionary<string, object> { { "a", "t\"ırnak" }, { "b", new List<object> { 1, true } } });
+        Check(JNode.From(ser)["a"].Str == "t\"ırnak" && JNode.From(ser)["b"][1].Bool, "JSON yazılır ve geri okunur");
+        var big = PlayerState.NewGame();
+        for (int i = 0; i < 2000; i++) big.CompletedQuests.Add("g" + (i + 1).ToString("0000"));
+        string bigJson = MiniJson.Serialize(big.CompletedQuests);
+        string packed = CloudData.Pack(bigJson);
+        Check(CloudData.Unpack(packed) == bigJson && packed.Length < bigJson.Length / 2, "Kayıt sıkıştırılır (" + bigJson.Length + " -> " + packed.Length + " bayt)");
+        var vil = CloudData.Village(big, "Ali");
+        Check((int)CloudData.Stats(big)["quests"] == 2000 && (string)vil["name"] == "Ali", "Sıralama istatistikleri ve köy vitrini");
+
         Console.WriteLine("Dil (İngilizce)");
         Loc.Current = Lang.En;
         Check(ElementDatabase.Get("Fe").NameTr == "Iron" && CompoundDatabase.Get("salt").NameTr == "Table Salt", "Element ve bileşik adları İngilizce");

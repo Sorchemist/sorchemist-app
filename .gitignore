@@ -45,3 +45,8 @@ Thumbs.db
 ilk-push.bat
 _kurulum/
 guncelle.bat
+
+# Sunucu gizli ayarları
+Server/api/config.php
+Server/api/*.sqlite
+sorchemist-api.zip

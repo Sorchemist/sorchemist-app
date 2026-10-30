@@ -1,0 +1,9 @@
+# Sorchemist API güvenliği
+Options -Indexes
+<FilesMatch "^(config\.php|config\.sample\.php|lib\.php|.*\.sqlite)$">
+    Require all denied
+</FilesMatch>
+# Authorization başlığını PHP'ye ilet (bazı sunucularda gerekli)
+RewriteEngine On
+RewriteCond %{HTTP:Authorization} .
+RewriteRule .* - [E=HTTP_AUTHORIZATION:%{HTTP:Authorization}]

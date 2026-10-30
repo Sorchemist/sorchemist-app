@@ -43,6 +43,7 @@ namespace Sorchemist.UI
             AddTab(col, ScreenId.Lab, Loc.T("Laboratuvar", "Laboratory"));
             AddTab(col, ScreenId.FailDex, "Fail-Dex");
             AddTab(col, ScreenId.Skills, Loc.T("Pasifler", "Passives"));
+            AddTab(col, ScreenId.Social, Loc.T("Topluluk", "Community"));
 
             // ----- Üst çubuk -----
             var bar = UIKit.Img(root, "TopBar", new Color(0.08f, 0.06f, 0.14f, 0.92f));
@@ -196,7 +197,7 @@ namespace Sorchemist.UI
             var gm = GameManager.I;
             RectTransform body;
             var modal = UIKit.Modal(gm.Overlay, Loc.T("Ayarlar", "Settings"), out body, 940, 1100);
-            UIKit.VList(body, 18, 6);
+            UIKit.VList(body, 14, 4);
 
             // ----- Dil seçimi -----
             var langTitle = UIKit.Txt(body, "LangTitle", "<b>Dil / Language</b>", 32, Theme.Accent);
@@ -207,6 +208,14 @@ namespace Sorchemist.UI
             LangButton(langRow, "Türkçe", Lang.Tr, modal);
             LangButton(langRow, "English", Lang.En, modal);
 
+            // ----- Hesap (bulut kaydı, arkadaşlar) -----
+            var cloud = CloudService.I;
+            string accLabel = cloud != null && cloud.LoggedIn
+                ? Loc.T("Hesap: ", "Account: ") + cloud.UserName
+                : Loc.T("Giriş Yap / Hesap Aç", "Log In / Sign Up");
+            var acc = UIKit.Btn(body, "Account", accLabel, Theme.Magic, () => { Destroy(modal.gameObject); AccountPanel.Show(); }, 32, UIKit.Hex("#2A1640"));
+            UIKit.LE(acc, 86);
+
             Button sound = null, haptic = null;
             sound = UIKit.Btn(body, "Sound", "", Theme.PanelLight, () =>
             {
@@ -214,19 +223,19 @@ namespace Sorchemist.UI
                 UIKit.LabelOf(sound).text = SoundLabel(gm.State.SoundOn); gm.SaveNow();
             });
             UIKit.LabelOf(sound).text = SoundLabel(gm.State.SoundOn);
-            UIKit.LE(sound, 90);
+            UIKit.LE(sound, 78);
             haptic = UIKit.Btn(body, "Haptic", "", Theme.PanelLight, () =>
             {
                 gm.State.HapticsOn = !gm.State.HapticsOn; Haptics.Enabled = gm.State.HapticsOn;
                 UIKit.LabelOf(haptic).text = HapticLabel(gm.State.HapticsOn); gm.SaveNow();
             });
             UIKit.LabelOf(haptic).text = HapticLabel(gm.State.HapticsOn);
-            UIKit.LE(haptic, 90);
+            UIKit.LE(haptic, 78);
 
             var about = UIKit.Txt(body, "About", Loc.T(
                 "Sorchemist v0.2 (prototip) · Aqualf ve Fındıkdere köyü · @sorchemist\nKimya gerçek, büyü biraz abartılı.",
                 "Sorchemist v0.2 (prototype) · Aqualf and Hazelbrook village · @sorchemist\nThe chemistry is real, the magic a little exaggerated."), 26, Theme.TextDim);
-            UIKit.LE(about, 90);
+            UIKit.LE(about, 70);
 
             Button reset = null;
             bool armed = false;
@@ -235,9 +244,9 @@ namespace Sorchemist.UI
                 if (!armed) { armed = true; UIKit.LabelOf(reset).text = Loc.T("Emin misin? Tekrar dokun", "Are you sure? Tap again"); return; }
                 gm.ResetGame();
             });
-            UIKit.LE(reset, 90);
-            var close = UIKit.Btn(body, "Close", Loc.T("Kapat", "Close"), Theme.Magic, () => Destroy(modal.gameObject));
-            UIKit.LE(close, 90);
+            UIKit.LE(reset, 78);
+            var close = UIKit.Btn(body, "Close", Loc.T("Kapat", "Close"), Theme.Magic, () => Destroy(modal.gameObject), 40, UIKit.Hex("#2A1640"));
+            UIKit.LE(close, 78);
         }
 
         static string OnOff(bool on) { return on ? Loc.T("Açık", "On") : Loc.T("Kapalı", "Off"); }

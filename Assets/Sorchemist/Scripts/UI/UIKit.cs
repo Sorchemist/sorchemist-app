@@ -215,6 +215,27 @@ namespace Sorchemist.UI
 
         public static Text LabelOf(Button b) { return b.GetComponentInChildren<Text>(); }
 
+        /// <summary>Yazı alanı (e-posta, şifre, ad, kod). Mobilde dokununca klavye açılır.</summary>
+        public static InputField Input(Transform parent, string name, string placeholder,
+            InputField.ContentType type = InputField.ContentType.Standard, int fontSize = 34, int charLimit = 100)
+        {
+            var bg = Panel(parent, name, new Color(0.96f, 0.93f, 0.86f, 1f));
+            var field = bg.gameObject.AddComponent<InputField>();
+            var text = Txt(bg.transform, "Text", "", fontSize, WoodText, TextAnchor.MiddleLeft);
+            text.supportRichText = false;
+            text.horizontalOverflow = HorizontalWrapMode.Overflow;
+            Stretch(text.rectTransform, 22, 6, 22, 6);
+            var ph = Txt(bg.transform, "Placeholder", placeholder, fontSize, new Color(0.45f, 0.38f, 0.3f, 0.75f), TextAnchor.MiddleLeft, FontStyle.Italic);
+            Stretch(ph.rectTransform, 22, 6, 22, 6);
+            field.textComponent = text;
+            field.placeholder = ph;
+            field.targetGraphic = bg;
+            field.contentType = type;
+            field.characterLimit = charLimit;
+            field.lineType = InputField.LineType.SingleLine;
+            return field;
+        }
+
         public static readonly Color WoodText = Hex("#3B2410");
         public static readonly Color WoodInactive = new Color(0.66f, 0.62f, 0.58f, 1f);
         public static bool HasWood { get { return Art.Has("btn_wood"); } }
@@ -260,7 +281,7 @@ namespace Sorchemist.UI
         {
             var le = c.gameObject.GetComponent<LayoutElement>();
             if (le == null) le = c.gameObject.AddComponent<LayoutElement>();
-            if (prefHeight >= 0) { le.preferredHeight = prefHeight; le.minHeight = prefHeight; }
+            if (prefHeight >= 0) { le.preferredHeight = prefHeight; le.minHeight = prefHeight; le.flexibleHeight = 0; }
             if (prefWidth >= 0) { le.preferredWidth = prefWidth; le.minWidth = prefWidth; }
             if (flexW >= 0) le.flexibleWidth = flexW;
             return le;

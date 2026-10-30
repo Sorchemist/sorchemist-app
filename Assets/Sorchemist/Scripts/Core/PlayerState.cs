@@ -39,6 +39,8 @@ namespace Sorchemist.Core
         public string ActiveQuestId;
         public bool SoundOn = true;
         public int Language;            // 0 = Türkçe, 1 = English
+        public int CloudUserId;         // Bu kaydın bağlı olduğu çevrimiçi hesap (0 = yok)
+        public int CloudRev;            // Sunucudaki kaydın bu cihazın bildiği son sürümü
         public bool HapticsOn = true;
         public long MysteryReadyAt;     // Gizemli kutunun açılabileceği zaman (unix sn). 0 = hemen
         public int MysteryOpened;       // Kaç kutu açıldı

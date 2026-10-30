@@ -9,7 +9,7 @@ using UnityEngine.UI;
 
 namespace Sorchemist.Game
 {
-    public enum ScreenId { Village, Lab, FailDex, Skills }
+    public enum ScreenId { Village, Lab, FailDex, Skills, Social }
 
     public class GameManager : MonoBehaviour
     {
@@ -47,6 +47,7 @@ namespace Sorchemist.Game
             EnsureEventSystem();
             gameObject.AddComponent<AudioFX>();
             gameObject.AddComponent<FX>();
+            gameObject.AddComponent<CloudService>();
             AudioFXHook.OnClick = () => AudioFX.Play(Sfx.Click, 0.5f, 0.1f);
 
             var loaded = SaveService.Load();
@@ -54,7 +55,7 @@ namespace Sorchemist.Game
             if (loaded != null) Loc.Current = (Lang)loaded.Language;   // kayıtlı dil (yeni oyunda mevcut dil korunur)
             Session = new GameSession(loaded);
             State.Language = (int)Loc.Current;
-            Session.Changed += () => { _dirty = true; if (_hud != null) _hud.Refresh(); };
+            Session.Changed += OnSessionChanged;
             AudioFX.I.Enabled = State.SoundOn;
             Haptics.Enabled = State.HapticsOn;
 
@@ -69,6 +70,17 @@ namespace Sorchemist.Game
                         Toast(Loc.T("Köye bir Gizemli Kutu geldi! Laboratuvarın yanında seni bekliyor.", "A Mystery Box has arrived in the village! It is waiting by the lab."));
                 }))
                 if (_isNewGame) Invoke("Intro", 0.3f);
+            // Hesaba girilmişse başka bir cihazda oynanmış daha yeni bir kayıt var mı bak
+            if (CloudService.I.LoggedIn) Invoke("CloudCheck", 2f);
+        }
+
+        void CloudCheck() { CloudService.I.RefreshMe(); CloudService.I.SyncAfterLogin(); }
+
+        void OnSessionChanged()
+        {
+            _dirty = true;
+            if (_hud != null) _hud.Refresh();
+            if (CloudService.I != null) CloudService.I.MarkDirty();
         }
 
         void EnsureCamera()
@@ -131,6 +143,7 @@ namespace Sorchemist.Game
             AddScreen<LabScreen>(ScreenId.Lab, "Lab");
             AddScreen<FailDexScreen>(ScreenId.FailDex, "FailDex");
             AddScreen<SkillScreen>(ScreenId.Skills, "Skills");
+            AddScreen<SocialScreen>(ScreenId.Social, "Social");
         }
 
         void AddScreen<T>(ScreenId id, string name) where T : GameScreen
@@ -228,12 +241,30 @@ namespace Sorchemist.Game
             Loc.Current = lang;
             State.Language = (int)lang;
             SaveNow();
+            RebuildUI();
+            Toast(Loc.T("Dil: Türkçe", "Language: English"));
+        }
+
+        void RebuildUI()
+        {
             var old = transform.Find("SorchemistCanvas");
             if (old != null) { old.name = "OldCanvas"; Destroy(old.gameObject); }
             _screens.Clear();
             BuildCanvas();
             Show(ScreenId.Village);
-            Toast(Loc.T("Dil: Türkçe", "Language: English"));
+        }
+
+        /// <summary>Başka bir kaydı (ör. buluttan gelen) yükler ve arayüzü yeniden kurar.</summary>
+        public void LoadState(PlayerState st)
+        {
+            Session.Changed -= OnSessionChanged;
+            Session = new GameSession(st);
+            Session.Changed += OnSessionChanged;
+            Loc.Current = (Lang)st.Language;
+            AudioFX.I.Enabled = State.SoundOn;
+            Haptics.Enabled = State.HapticsOn;
+            SaveNow();
+            RebuildUI();
         }
 
         public void ResetGame()
